@@ -1,0 +1,406 @@
+ 
+ --------------------------------------------------------------------------------------------------------------------------------------- 
+
+2024-02-11 01:36:07.370471 
+
+1 - Ok loading .csv. 
+
+1 - Loading .csv file: ['C:/Bioreactor/Logs/R2\\2024-02-11_R2.csv', 'C:/Bioreactor/Logs/R2\\2024-02-10_R2.csv']. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-11_R2.csv. If failed, returning empty dataframe. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-10_R2.csv. If failed, returning empty dataframe. 
+
+2 - No. 
+
+3 - No. If 'Yes', returning original data. 
+
+4 - No. 
+
+5 - No. 
+
+6 - No error in reading meas from dataframe. 
+
+7 - No. 
+
+8 - Loaded integral state for Header from Header_2024-02-10_state.csv. 
+
+8 - Loaded integral state for Follower from Follower_2024-02-10_state.csv. 
+
+8 - No. 
+
+9 - Loaded hyst.comparator state for Follower from Follower_2024-02-10_state.csv. 
+
+9 - No. 
+
+10 - No. 
+
+11 - No. 
+
+12 - Loading .ini file: C:\Bioreactor\Remote\Parameter correct\Parameter_2024-02-10_23-06-15.ini. 
+
+12 - No warnings. 
+
+13 - Parameter.ini has been written in
+    C:/Bioreactor/Remote/Parameter.ini and Parameter_2024-02-11_01-35-16.ini
+    C:/Users/Admin/UIT controller/Parameter_2024-02-11_01-35-16.ini. 
+ --------------------------------------------------------------------------------------------------------------------------------------- 
+
+2024-02-11 04:06:07.427244 
+
+1 - Ok loading .csv. 
+
+1 - Loading .csv file: ['C:/Bioreactor/Logs/R2\\2024-02-11_R2.csv', 'C:/Bioreactor/Logs/R2\\2024-02-10_R2.csv']. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-11_R2.csv. If failed, returning empty dataframe. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-10_R2.csv. If failed, returning empty dataframe. 
+
+2 - No. 
+
+3 - No. If 'Yes', returning original data. 
+
+4 - No. 
+
+5 - No. 
+
+6 - No error in reading meas from dataframe. 
+
+7 - No. 
+
+8 - Loaded integral state from Header_2024-02-11_state.csv. 
+
+8 - Loaded integral state from Follower_2024-02-11_state.csv. 
+
+8 - No. 
+
+9 - Loaded hyst.comparator state from Follower_2024-02-11_state.csv. 
+
+9 - No. 
+
+10 - No. 
+
+11 - No. 
+
+12 - Loading .ini file: C:\Bioreactor\Remote\Parameter correct\Parameter_2024-02-11_01-36-10.ini. 
+
+12 - No warnings. 
+
+13 - Parameter.ini has been written in
+    C:/Bioreactor/Remote/Parameter.ini and Parameter_2024-02-11_04-05-30.ini
+    C:/Users/Admin/UIT controller/Parameter_2024-02-11_04-05-30.ini. 
+ --------------------------------------------------------------------------------------------------------------------------------------- 
+
+2024-02-11 06:36:07.449016 
+
+1 - Ok loading .csv. 
+
+1 - Loading .csv file: ['C:/Bioreactor/Logs/R2\\2024-02-11_R2.csv', 'C:/Bioreactor/Logs/R2\\2024-02-10_R2.csv']. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-11_R2.csv. If failed, returning empty dataframe. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-10_R2.csv. If failed, returning empty dataframe. 
+
+2 - No. 
+
+3 - No. If 'Yes', returning original data. 
+
+4 - No. 
+
+5 - No. 
+
+6 - No error in reading meas from dataframe. 
+
+7 - No. 
+
+8 - Loaded integral state from Header_2024-02-11_state.csv. 
+
+8 - Loaded integral state from Follower_2024-02-11_state.csv. 
+
+8 - No. 
+
+9 - Loaded hyst.comparator state from Follower_2024-02-11_state.csv. 
+
+9 - No. 
+
+10 - No. 
+
+11 - No. 
+
+12 - Loading .ini file: C:\Bioreactor\Remote\Parameter correct\Parameter_2024-02-11_04-06-15.ini. 
+
+12 - No warnings. 
+
+13 - Parameter.ini has been written in
+    C:/Bioreactor/Remote/Parameter.ini and Parameter_2024-02-11_06-35-45.ini
+    C:/Users/Admin/UIT controller/Parameter_2024-02-11_06-35-45.ini. 
+ --------------------------------------------------------------------------------------------------------------------------------------- 
+
+2024-02-11 09:06:07.448787 
+
+1 - Ok loading .csv. 
+
+1 - Loading .csv file: ['C:/Bioreactor/Logs/R2\\2024-02-11_R2.csv', 'C:/Bioreactor/Logs/R2\\2024-02-10_R2.csv']. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-11_R2.csv. If failed, returning empty dataframe. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-10_R2.csv. If failed, returning empty dataframe. 
+
+2 - No. 
+
+3 - No. If 'Yes', returning original data. 
+
+4 - No. 
+
+5 - No. 
+
+6 - No error in reading meas from dataframe. 
+
+7 - No. 
+
+8 - Loaded integral state from Header_2024-02-11_state.csv. 
+
+8 - Loaded integral state from Follower_2024-02-11_state.csv. 
+
+8 - No. 
+
+9 - Loaded hyst.comparator state from Follower_2024-02-11_state.csv. 
+
+9 - No. 
+
+10 - No. 
+
+11 - No. 
+
+12 - Loading .ini file: C:\Bioreactor\Remote\Parameter correct\Parameter_2024-02-11_06-36-08.ini. 
+
+12 - No warnings. 
+
+13 - Parameter.ini has been written in
+    C:/Bioreactor/Remote/Parameter.ini and Parameter_2024-02-11_09-06-00.ini
+    C:/Users/Admin/UIT controller/Parameter_2024-02-11_09-06-00.ini. 
+ --------------------------------------------------------------------------------------------------------------------------------------- 
+
+2024-02-11 11:36:07.467558 
+
+1 - Ok loading .csv. 
+
+1 - Loading .csv file: ['C:/Bioreactor/Logs/R2\\2024-02-11_R2.csv', 'C:/Bioreactor/Logs/R2\\2024-02-10_R2.csv']. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-11_R2.csv. If failed, returning empty dataframe. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-10_R2.csv. If failed, returning empty dataframe. 
+
+2 - No. 
+
+3 - No. If 'Yes', returning original data. 
+
+4 - No. 
+
+5 - No. 
+
+6 - No error in reading meas from dataframe. 
+
+7 - No. 
+
+8 - Loaded integral state from Header_2024-02-11_state.csv. 
+
+8 - Loaded integral state from Follower_2024-02-11_state.csv. 
+
+8 - No. 
+
+9 - Loaded hyst.comparator state from Follower_2024-02-11_state.csv. 
+
+9 - No. 
+
+10 - No. 
+
+11 - No. 
+
+12 - Loading .ini file: C:\Bioreactor\Remote\Parameter correct\Parameter_2024-02-11_09-06-14.ini. 
+
+12 - No warnings. 
+
+13 - Parameter.ini has been written in
+    C:/Bioreactor/Remote/Parameter.ini and Parameter_2024-02-11_11-35-15.ini
+    C:/Users/Admin/UIT controller/Parameter_2024-02-11_11-35-15.ini. 
+ --------------------------------------------------------------------------------------------------------------------------------------- 
+
+2024-02-11 14:06:07.429327 
+
+1 - Ok loading .csv. 
+
+1 - Loading .csv file: ['C:/Bioreactor/Logs/R2\\2024-02-11_R2.csv', 'C:/Bioreactor/Logs/R2\\2024-02-10_R2.csv']. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-11_R2.csv. If failed, returning empty dataframe. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-10_R2.csv. If failed, returning empty dataframe. 
+
+2 - No. 
+
+3 - No. If 'Yes', returning original data. 
+
+4 - No. 
+
+5 - No. 
+
+6 - No error in reading meas from dataframe. 
+
+7 - No. 
+
+8 - Loaded integral state from Header_2024-02-11_state.csv. 
+
+8 - Loaded integral state from Follower_2024-02-11_state.csv. 
+
+8 - No. 
+
+9 - Loaded hyst.comparator state from Follower_2024-02-11_state.csv. 
+
+9 - No. 
+
+10 - No. 
+
+11 - No. 
+
+12 - Loading .ini file: C:\Bioreactor\Remote\Parameter correct\Parameter_2024-02-11_11-36-09.ini. 
+
+12 - No warnings. 
+
+13 - Parameter.ini has been written in
+    C:/Bioreactor/Remote/Parameter.ini and Parameter_2024-02-11_14-05-32.ini
+    C:/Users/Admin/UIT controller/Parameter_2024-02-11_14-05-32.ini. 
+ --------------------------------------------------------------------------------------------------------------------------------------- 
+
+2024-02-11 16:36:13.260431 
+
+1 - Ok loading .csv. 
+
+1 - Loading .csv file: ['C:/Bioreactor/Logs/R2\\2024-02-11_R2.csv', 'C:/Bioreactor/Logs/R2\\2024-02-10_R2.csv']. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-11_R2.csv. If failed, returning empty dataframe. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-10_R2.csv. If failed, returning empty dataframe. 
+
+2 - No. 
+
+3 - No. If 'Yes', returning original data. 
+
+4 - No. 
+
+5 - No. 
+
+6 - No error in reading meas from dataframe. 
+
+7 - No. 
+
+8 - Loaded integral state from Header_2024-02-11_state.csv. 
+
+8 - Loaded integral state from Follower_2024-02-11_state.csv. 
+
+8 - No. 
+
+9 - Loaded hyst.comparator state from Follower_2024-02-11_state.csv. 
+
+9 - No. 
+
+10 - No. 
+
+11 - No. 
+
+12 - Loading .ini file: C:\Bioreactor\Remote\Parameter correct\Parameter_2024-02-11_14-06-14.ini. 
+
+12 - No warnings. 
+
+13 - Parameter.ini has been written in
+    C:/Bioreactor/Remote/Parameter.ini and Parameter_2024-02-11_16-35-51.ini
+    C:/Users/Admin/UIT controller/Parameter_2024-02-11_16-35-51.ini. 
+ --------------------------------------------------------------------------------------------------------------------------------------- 
+
+2024-02-11 19:06:07.380865 
+
+1 - Ok loading .csv. 
+
+1 - Loading .csv file: ['C:/Bioreactor/Logs/R2\\2024-02-11_R2.csv', 'C:/Bioreactor/Logs/R2\\2024-02-10_R2.csv']. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-11_R2.csv. If failed, returning empty dataframe. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-10_R2.csv. If failed, returning empty dataframe. 
+
+2 - No. 
+
+3 - No. If 'Yes', returning original data. 
+
+4 - No. 
+
+5 - No. 
+
+6 - No error in reading meas from dataframe. 
+
+7 - No. 
+
+8 - Loaded integral state from Header_2024-02-11_state.csv. 
+
+8 - Loaded integral state from Follower_2024-02-11_state.csv. 
+
+8 - No. 
+
+9 - Loaded hyst.comparator state from Follower_2024-02-11_state.csv. 
+
+9 - No. 
+
+10 - No. 
+
+11 - No. 
+
+12 - Loading .ini file: C:\Bioreactor\Remote\Parameter correct\Parameter_2024-02-11_16-36-18.ini. 
+
+12 - No warnings. 
+
+13 - Parameter.ini has been written in
+    C:/Bioreactor/Remote/Parameter.ini and Parameter_2024-02-11_19-05-11.ini
+    C:/Users/Admin/UIT controller/Parameter_2024-02-11_19-05-11.ini. 
+ --------------------------------------------------------------------------------------------------------------------------------------- 
+
+2024-02-11 21:36:07.364635 
+
+1 - Ok loading .csv. 
+
+1 - Loading .csv file: ['C:/Bioreactor/Logs/R2\\2024-02-11_R2.csv', 'C:/Bioreactor/Logs/R2\\2024-02-10_R2.csv']. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-11_R2.csv. If failed, returning empty dataframe. 
+
+2 - Successfully read C:/Bioreactor/Logs/R2/2024-02-10_R2.csv. If failed, returning empty dataframe. 
+
+2 - No. 
+
+3 - No. If 'Yes', returning original data. 
+
+4 - No. 
+
+5 - No. 
+
+6 - No error in reading meas from dataframe. 
+
+7 - No. 
+
+8 - Loaded integral state from Header_2024-02-11_state.csv. 
+
+8 - Loaded integral state from Follower_2024-02-11_state.csv. 
+
+8 - No. 
+
+9 - Loaded hyst.comparator state from Follower_2024-02-11_state.csv. 
+
+9 - No. 
+
+10 - No. 
+
+11 - No. 
+
+12 - Loading .ini file: C:\Bioreactor\Remote\Parameter correct\Parameter_2024-02-11_19-06-12.ini. 
+
+12 - No warnings. 
+
+13 - Parameter.ini has been written in
+    C:/Bioreactor/Remote/Parameter.ini and Parameter_2024-02-11_21-35-33.ini
+    C:/Users/Admin/UIT controller/Parameter_2024-02-11_21-35-33.ini.
