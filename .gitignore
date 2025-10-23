@@ -167,6 +167,4 @@ cython_debug/
 *.mp4
 
 #Subfolders
-Real/Real_offline/
-Selectortest/
-ClosedLooptest_tube_Real/
+Private/
