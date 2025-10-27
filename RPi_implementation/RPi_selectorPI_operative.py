@@ -78,7 +78,7 @@ def main(modelname, now: datetime = datetime.now()):
     log_date = now.strftime('%Y-%m-%d')
 
     # Read past measurements data from CSV file
-    y_df_on_path = os.path.join(directory, testname, f'y_df_data_on_alt_R{modelname}.csv') # Path of the CSV file with measurements data
+    y_df_on_path = os.path.join(directory, testname, 'Input', f'y_df_data_on_alt_R{modelname}.csv') # Path of the CSV file with measurements data
     y_df_data_on = pd.read_csv(y_df_on_path, sep=',', header=0, parse_dates=['Timestamp'])
     # Keep only some columns in y_df_data_on
     y_df_data_on = y_df_data_on[['Timestamp', 'gas_rate_out_ma', 'xM_gb_out', 'xC_gb_out']]
@@ -113,10 +113,10 @@ def main(modelname, now: datetime = datetime.now()):
     measure2 = last_row['co2ch4'] if last_row['co2ch4'] != 0 else 0.842 # Value taken from "optim_ss" simulation of 26.01.2024
 
     # ------------------------------------------------------------------------------------------------------------------- #
-    # In[18]: LOAD THE INPUT DATA FILES FROM CSV (SETPOINTS)
+    # In[5]: LOAD THE INPUT DATA FILES FROM CSV (SETPOINTS)
     # Read setpoints from CSV file for the current control step (nearest row with respect to 'current_time')
     try:
-        y_ref = read_and_split_txt(os.path.join(directory, testname, 'Output_setpoints.txt'), log=True)
+        y_ref = read_and_split_txt(os.path.join(directory, testname, 'Input', 'Output_setpoints.txt'), log=True)
         y_ref = create_dataframe(['Qch4_ref', 'co2ch4_ref'], [pd.Series(y_ref[1]), pd.Series(y_ref[2])], datetime(2025,4,30,10,0))
         y_ref['co2ch4_ref'] = 0.85 # Replace with "y_ref['Setpoint2']" if time-varying setpoint is desired
         y_ref['TresholdLow'] = y_ref['co2ch4_ref'] + 0.05 # Replace with "y_ref['TresholdLow']" if time-varying setpoint is desired
@@ -135,7 +135,7 @@ def main(modelname, now: datetime = datetime.now()):
         logger.warning('Uncorrect relation between setpoint2 and tresholds')
 
     # Log for "boundary" conditions of the controller computations for the current evaluation
-    data_filepath = os.path.join(directory, testname, f'Buondary_calc_conditions.csv') # Add 'log_date' to filename if desired to create a new file for each day
+    data_filepath = os.path.join(directory, testname, 'Output', f'Buondary_calc_conditions.csv') # Add 'log_date' to filename if desired to create a new file for each day
     new_row_data = {'Timestamp_setpoints':setpoints_row['Timestamp'],'Timestamp_measures':current_time,
                     'ch4_setpoint':setpoint1, 'ch4_measure':measure1,
                     'co2/ch4_setpoint':setpoint2, 'co2/ch4_measure':measure2,
@@ -145,7 +145,7 @@ def main(modelname, now: datetime = datetime.now()):
     save_df_with_check(new_row_data_df, data_filepath, log=True)
 
     # ------------------------------------------------------------------------------------------------------------------- #
-    # In[20]: COMPUTE ERRORS, INSTANTIATE CONTROLLERS AND LOAD PAST CONTROLLER STATE
+    # In[6]: COMPUTE ERRORS, INSTANTIATE CONTROLLERS AND LOAD PAST CONTROLLER STATE
     # Compute the control errors
     error1 = setpoint1 - measure1
     error2 = setpoint2 - measure2
@@ -164,203 +164,161 @@ def main(modelname, now: datetime = datetime.now()):
     controller2 = PIController(name = "Follower", kp = kp2, ki = kp2/Ti2, current_timestamp=now,
                                 saturation_low = saturation_low, saturation_high = saturation_high, saturate_integral=False, logger=logger)
 
+    # Set filenames for saving/loading controller states
+    output_filename_header = 'State_header'
+    output_filename_follower = 'State_follower'
     # Load the state from the previous run (last saved state)
-    controller1.load_state(log_date, filename=os.path.join(directory, testname, 'Selector',f'State_header_{log_date}.csv'))
-    controller2.load_state(log_date, filename=os.path.join(directory, testname, 'Selector',f'State_follower_{log_date}.csv'))
+    controller1.load_state(log_date, filename=os.path.join(directory, testname, 'Output', f"{output_filename_header}_{log_date}.csv"))
+    controller2.load_state(log_date, filename=os.path.join(directory, testname, 'Output', f"{output_filename_follower}_{log_date}.csv"))
 
     # ------------------------------------------------------------------------------------------------------------------- #
-
-    # In[22]: SELECTION OF THE ACTIVE CONTROLLER (and eventual override)
-    # Defines a boolean 'condition' as the state of the hysteresis comparator function
-    # When 'edge' of 'condition', REINIT is triggered
+    # In[7]: SELECTION OF THE ACTIVE CONTROLLER (and eventual override)
+    # Defines a boolean 'condition' = state of the hysteresis comparator function. When 'edge' of 'condition', override is triggered
+    # Extract previous condition from the last log entry
     if not controller2.log_df.empty:
         controller2.log_df.loc[controller2.log_df.index[-1],'selection'] = controller2.log_df.at[controller2.log_df.index[-1],'selection'] == 'True'
-    prev_condition = controller2.log_df.iloc[-1]['selection'] if not controller2.log_df.empty else False # Initialize the 'prev_condition'
-    # Reset the state of controller1 using the last state of controller2 if the condition holds
-    # It adds a row in the log.
-    # QUESTION: Alternative: Dovrei cambiare struttura e, se condizione, non far leggere ultimo stato da file ma specificarlo direttamente
-    derired_value_controller1 = (float(controller2.log_df.iloc[-1]['control_signal'])-controller1.kp*error1)/controller1.ki if not controller2.log_df.empty else 0
-    derired_value_controller2 = (float(controller1.log_df.iloc[-1]['control_signal'])-controller2.kp*error2)/controller2.ki if not controller1.log_df.empty else 0
+    prev_condition = controller2.log_df.iloc[-1]['selection'] if not controller2.log_df.empty else False # At control initialization (k=0), set 'prev_condition' to False
 
-    #condition = True if measure2 > threshold else False
+    # Update the hysteresis comparator state with the current measurement2 ('co2/ch4 ratio')
     hysteresis_comp = HysteresisComparator(threshold_low=threshold_low, threshold_high=threshold_high, logger=logger)
-    condition = hysteresis_comp.update(measure2)
+    condition = hysteresis_comp.update(measure2) # Note: 'condition' is True if measured 'co2/ch4 ratio' reached dangerous values, else False
 
-    # Check for the edge condition change
+    # Check for the edge condition change: if so and False->True, override and activate controller2; if True->False, override and activate controller1
     if condition != prev_condition and prev_condition == False:
-        # Reinitialize the state of controllers based on the edge condition
-        controller2.reset_state(derired_value_controller2)
+        # Compute the desired value for the override of the integrator in case of edge condition change
+        desired_value_controller2 = (float(controller1.log_df.iloc[-1]['control_signal'])-controller2.kp*error2)/controller2.ki if not controller1.log_df.empty else 0
+        # Override the state of the inactive->active controller to be consistent with the current control action
+        controller2.reset_state(desired_value_controller2)
     if condition != prev_condition and prev_condition == True:
-        controller1.reset_state(derired_value_controller1)
+        # Compute the desired value for the override of the integrator in case of edge condition change
+        desired_value_controller1 = (float(controller2.log_df.iloc[-1]['control_signal'])-controller1.kp*error1)/controller1.ki if not controller2.log_df.empty else 0
+        # Override the state of the inactive->active controller to be consistent with the current control action
+        controller1.reset_state(desired_value_controller1)
 
-    # In[23]:
-    # COMPUTATION OF THE CONTROL ACTION FOR BOTH CONTROLLERS
-    # SWITCH SELECTION OF THE CONTROL ACTION BASED ON WHICH CONTROLLER IS ACTIVE (based on 'condition' defined above)
-    # Calculate the control output
-    nominal_u = 100 # mL/day (nominal flowrate of tomato souce)
+    # ------------------------------------------------------------------------------------------------------------------- #
+    # In[8]: COMPUTATION OF THE CONTROL ACTION (FOR BOTH CONTROLLERS) AND SELECTION OF THE FINAL CONTROL ACTION
+    # Calculate the control signal for both controllers
     control_output1 = controller1.compute(error1, dt, not condition)
     control_output2 = controller2.compute(error2, dt, condition)
 
     # Save the state of controllers for the next run
-    controller1.save_state(log_date, filename=os.path.join(directory, testname,'Selector',f'State_header_{log_date}.csv'))
-    controller2.save_state(log_date, filename=os.path.join(directory, testname, 'Selector',f'State_follower_{log_date}.csv'))
-    save_df_with_check(controller1.log_df, os.path.join(directory, testname, 'Selector',f'State_header.csv'), log=True)
-    save_df_with_check(controller2.log_df, os.path.join(directory, testname, 'Selector',f'State_follower.csv'), log=True)
+    controller1.save_state(log_date, filename=os.path.join(directory, testname, 'Output', f'{output_filename_header}_{log_date}.csv'))
+    controller2.save_state(log_date, filename=os.path.join(directory, testname, 'Output', f'{output_filename_follower}_{log_date}.csv'))
+    save_df_with_check(controller1.log_df, os.path.join(directory, testname, 'Output', f'{output_filename_header}.csv'), log=True) # Just for plotting and compactness purposes
+    save_df_with_check(controller2.log_df, os.path.join(directory, testname, 'Output', f'{output_filename_follower}.csv'), log=True) # Just for plotting and compactness purposes
 
-    #SWITCH
-    # Choose between the two control signals based on the condition
-    final_control_signal = control_output2 if condition else control_output1
-    selector_error = 'No'
-    u_current = final_control_signal*1e6 + nominal_u # Control action in mL/day
+    # Switch: choose between the two control signals based on the condition
+    active_controller_name = controller2.name if condition else controller1.name # If condition, the 'co2/ch4 ratio' controller is active and its control signal is selected
+    final_control_signal = control_output2 if condition else control_output1 # If condition, the 'co2/ch4 ratio' controller is active and its control signal is selected
+    nominal_u = 100 # Nominal/initial control action (in mL/day)
+    u_current = final_control_signal*1e6 + nominal_u # Final control action (in mL/day)
 
-    #print(controller1.log_df)
-    #print(controller2.log_df)
-
-    # In[24]:
-
-    # CONVERT FLOAT (DISCRETE) CONTROL ACTION
-    # Move from tomato souce daily load (mL/day) to on/off interval duration of peristaltic pumps control
-    # QUESTION: center the control around the initial equilibrium and control action (10 ml/control interval) or around the optimal feeding strategy?
-    # If the second is persued, 'saturationLow' and 'on_minutes_nominal' must be varied in time 
-    # CONVERT CONTROL ACTION TO ON/OFF TIMES FOR THE RASPBERRY PI RELAY
+    # ------------------------------------------------------------------------------------------------------------------- #
+    # In[9]: CONVERT CONTROL ACTION TO ON/OFF TIMES FOR THE RASPBERRY PI RELAY, AND SAVE RESULTS TO CSV FILES
+    # Define the parameters to describe the characteristics of the pump and conversion from flow-rate to PWM
     u_max = saturation_high*1e6
-    dt = dt
-    pump_dose_per_minute = 20 #mL/min (add it to integrator_parameters?)
-    period = 20 #secc
+    pump_dose_per_minute = 20 # Flow rate of the peristaltic pump (in mL/min)
+    period = 20 # On-period of the PWM (in seconds)
+
+    # Convert
     tuple_seconds_ini, on_periods_tot, conversion_error = convert_u_to_pwm(u_current, u_max, dt, pump_dose_per_minute, period)
-    rounded_dosage = period*on_periods_tot*pump_dose_per_minute/60*24/dt*3600 #mL/day
+    rounded_dosage = period*on_periods_tot*pump_dose_per_minute/60*24/dt*3600 # Just for checking purposes (in mL/day)
+
+    # Save the computed PWM values to a CSV file
     pwm_star_dict = dict(zip(['on_sec', 'off_sec', 'tot_on_periods', 'rounded_dosage'],
                     np.array([tuple_seconds_ini[0], tuple_seconds_ini[1], on_periods_tot, rounded_dosage])))
-    pwm_star_df = pd.DataFrame([pwm_star_dict]) #duplicate last element
+    pwm_star_df = pd.DataFrame([pwm_star_dict])
     pwm_star_df.insert(0, 'Timestamp', now)
-    save_df_with_check(pwm_star_df, os.path.join(directory, testname, "Input", f'SELECTOR_pwm_actual.csv'), log=True) #save with date_string?
-    # -------------------------------------------------------------------------------------------------------------------
-    # END OF CONTROL COMPUTATION FOR THE CURRENT CONTROL EVALUATION
-
-    #QUESTION: Alternative: Run the controller computation in case everything has been saved together as a python function
-    # What is better for running .bat with scheduler?
-    #success = selector()
-
-    # SUMMARY LOG TO CSV FILE for main outputs of the controller computation run
-    output_filepath = os.path.join(directory, testname,'Selector',f'Output_selector_{log_date}.csv')
-    active_controller_name = controller2.name if condition else controller1.name
+    save_df_with_check(pwm_star_df, os.path.join(directory, testname, "Input", f'SELECTOR_pwm_actual.csv'), log=True)
+    
+    # Summary log to CSV file for main outputs of this run
     new_row_output = {'active':active_controller_name, 'ch4_error': error1, 'co2/ch4_error': error2, 
                     'c2/ch4-Trlow': measure2 - threshold_low, 'co2/ch4_TrHigh':measure2 - threshold_high, 
                     'final_control_signal':u_current, 'tot_on_periods':on_periods_tot,
                     'on_seconds_ini':tuple_seconds_ini[0],'off_seconds_ini':tuple_seconds_ini[1]
                     }
-    #append_row_to_csv(output_filepath, new_row_output)
     new_row_output_df = pd.DataFrame([new_row_output])
     new_row_output_df.insert(0, 'Timestamp', now) # Add the current timestamp to the DataFrame
-    #timestamp = now #datetime.now() #????????????????????
-    save_df_with_check(new_row_output_df, output_filepath, log=True)
-    output_filepath = os.path.join(directory, testname, 'Selector',f'Output_selector.csv')
-    save_df_with_check(new_row_output_df, output_filepath, log=True)
+    save_df_with_check(new_row_output_df, os.path.join(directory, testname,'Output', f'Output_selector_{log_date}.csv'), log=True)
+    save_df_with_check(new_row_output_df, os.path.join(directory, testname, 'Output', f'Output_selector.csv'), log=True)
     
-    # CONTROL ACTION (only for simulation test and to track EKF offline for R2)
-    u_star_df = pd.DataFrame({'Timestamp': [now], 'Uk': [np.round(u_current, 1)]})
-    save_df_with_check(u_star_df, os.path.join(directory, testname, "Input", f'NMPC_R{modelname}_u_actual_ANCILLARY_real.csv'), log=True)
-    # ------------------------------------------------------------------------------------------------------------------- #
+    # Save the control action also in daily load (only for simulation tests e.g. EKF for the R2 reactor in Chile experimental campaign)
+    # u_star_df = pd.DataFrame({'Timestamp': [now], 'Uk': [np.round(u_current, 1)]})
+    # save_df_with_check(u_star_df, os.path.join(directory, testname, "Input", f'NMPC_R{modelname}_u_actual_ANCILLARY_real.csv'), log=True)
 
-    # In[25]:
-    # PLOT THE RESULTS (and past results)
-    # PLOT VS DATA
+    # ------------------------------------------------------------------------------------------------------------------- #
+    # In[10]: PLOT THE RESULTS (on the past days from start_timestamp to now)
     # Create an instance of FlexiblePlotter
     plotter = FlexiblePlotter(default_figsize = (12, 12), logger=logger)
-    #df_boundary = read_csv_file(os.path.join(directory, testname, f'Selector_test\\Buondary_calc_conditions.csv'), log=True)
     df_output = read_csv_file(os.path.join(directory, testname, 'Selector',f'Output_selector.csv'), log=True)
-    # Map Header / Follower strings in the 'active' column as numeric 1 or 2
+    # Define a map to show which controller is active (from "Header"/"Follower" strings in the 'active' column to integers "100"/"200")
     df_output['active'] = df_output['active'].map({'Header': 100, 'Follower': 200})
-    #df_output['active'] = df_output['active'].astype(int)  # Convert to integer type
-    # Interpolate
+    # Interpolate to have values at each hour (fill missing timestamps with previous value)
     df_output['Timestamp'] = pd.to_datetime(df_output['Timestamp'])
     df_output.set_index('Timestamp', inplace=True)
-    # Create a new index with 1-hour intervals
     df_output = df_output.reindex(pd.date_range(start=df_output.index.min(), end=df_output.index.max(), freq='1H'))
-    # Interpolate the missing values
     df_output = df_output.fillna(method='pad')
     df_output.reset_index(inplace=True)
     df_output.rename(columns={'index': 'Timestamp'}, inplace=True)
     df_output.reset_index(inplace=True)
-    #
-    df_state_header = read_csv_file(os.path.join(directory, testname, 'Selector',f'State_header.csv'), log=True)
-    df_state_follower = read_csv_file(os.path.join(directory, testname, 'Selector',f'State_follower.csv'), log=True)
-    #
+
+    # Read the state data of both controllers
+    df_state_header = read_csv_file(os.path.join(directory, testname, 'Output', f'{output_filename_header}.csv'), log=True)
+    df_state_follower = read_csv_file(os.path.join(directory, testname, 'Output', f'{output_filename_follower}.csv'), log=True)
+    # Convert units of measure for plotting (if needed)
     combined_dataframe['ch4_rate'] = udm_gas_conversion(combined_dataframe['ch4_rate'], (42+273.15), 1.035, 12, 'Lh')
     y_ref['Qch4_ref'] = udm_gas_conversion(y_ref['Qch4_ref'], (42+273.15), 1.035, 12, 'Lh')
-    #
+    
+    # Prepare data dictionary for plotting
     data = {"data_on": combined_dataframe,
-            #"boundaries": df_boundary,
-            "control_outputs": df_output, #there is u here! Interpolate it!
-            "follower":df_state_follower, #remove log_date!!
+            "control_outputs": df_output,
+            "follower":df_state_follower,
             "header":df_state_header,
             "setpoint": y_ref,
             }
-    # Define the variables to be plotted
-    variable_groups = [
-        [("data_on", "ch4_rate"), ("setpoint", "Qch4_ref")],  # Second subplot
-        [("data_on", "co2ch4"), ("setpoint", "co2ch4_ref"),("setpoint", "TresholdLow"), ("setpoint", "TresholdHigh")],  # Second subplot
-        [("control_outputs", "final_control_signal"), ("control_outputs", "active")],  # Third subplot
-        [("header", "u_p"), ("header", "u_i"), ("header", "control_signal")],  # Third subplot
-        [("follower", "u_p"), ("follower", "u_i"), ("follower", "control_signal")],  # Third subplot
-    ]
-
-    # Calculate the x_limits
+    # Define the variables to be plotted (grouped in subplots)
+    variable_groups = [[("data_on", "ch4_rate"), ("setpoint", "Qch4_ref")], # Methane flowrate vs setpoint
+        [("data_on", "co2ch4"), ("setpoint", "co2ch4_ref"),("setpoint", "TresholdLow"), ("setpoint", "TresholdHigh")], # CO2/CH4 ratio vs setpoints
+        [("control_outputs", "final_control_signal"), ("control_outputs", "active")], # Final control action and active controller
+        [("header", "u_p"), ("header", "u_i"), ("header", "control_signal")], # Header controller states (proportional and integral actions, control signal)
+        [("follower", "u_p"), ("follower", "u_i"), ("follower", "control_signal")]] # Follower controller states (proportional and integral actions, control signal)
+    # Calculate the x_limits in datetime format
     end_time = end_timestamp
     start_time = start_timestamp
     x_limits = [(start_time, end_time) for _ in range(len(variable_groups))]
     date_string = f'{start_time.strftime("%d%m%H")}-{end_time.strftime("%d%m%H")}'
-
     # Use the FlexiblePlotter to create the plot
-    plotter.plot_grouped_variables_across_dfs(
-        data=data,
-        variable_groups=variable_groups,
-        x_axis_format="datetime",
-        x_limits=x_limits,
-        x_axis_ticks_format="%d-%m %H",
-        tick_rotation=90,
-        interval=1, #hours of tick interval x
-        grid=True,
-        show_plot=False,
-        y_labels=[None for _ in range(len(variable_groups))],  # No y-axis labels for subplots
+    plotter.plot_grouped_variables_across_dfs(data = data,
+        variable_groups = variable_groups,
+        x_axis_format = "datetime",
+        x_limits = x_limits,
+        x_axis_ticks_format = "%d-%m %H",
+        tick_rotation = 90,
+        interval = 1,
+        grid = True,
+        show_plot = False,
+        y_labels=[None for _ in range(len(variable_groups))],
         legend_param={"loc": "upper left"},
-        # vertical_lines=[model.integrator_parameters['start_timestamp'] for _ in range(len(variable_groups))],
         colors={"setpoint":["violet" for _ in range(len(variable_groups[1]))], 
                 "df_model_past":["orange"]},
-        alphas={"setpoint":[1, 1, 0.5, 0.5], "contol_outputs": [1, 2, 1, 1]},
-        # markers={
-        #     "data_on": [None, None, None, None],  # Markers for variables from "data_on"
-        #     "AM2HN": [None, None, None, None]    # Markers for variables from "AM2HN"
-        # },
-        # y_ticks = [4,4,4,4],
+        alphas={"setpoint":[1, 1, 0.5, 0.5], "control_outputs": [1, 2, 1, 1]},
         linestyles={'setpoint': ['--' for _ in range(len(variable_groups[1]))],},
         y_limits=[(10, 70), (0.5, 1.5), (saturation_low*1e6+nominal_u-1, saturation_high*1e6+nominal_u+1), 
                     (df_state_header[['u_p','u_i','control_signal']].min().min()*0.9, df_state_header[['u_p','u_i','control_signal']].max().max()*1.1), 
-                    (df_state_follower[['u_p','u_i','control_signal']].min().min()*0.9, df_state_follower[['u_p','u_i','control_signal']].max().max()*1.1),
-                ],
-    )
-    output_path = os.path.join(directory, testname, 'Selector',f'plots')
-
-    # Create the output directory if it does not exist
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-    # Save the figure
-    plt.savefig(os.path.join(output_path, f"R{modelname}_{date_string}_selector.png"), bbox_inches='tight', dpi=300)
-    # Log the output path
+                    (df_state_follower[['u_p','u_i','control_signal']].min().min()*0.9, df_state_follower[['u_p','u_i','control_signal']].max().max()*1.1)])
+    output_path = os.path.join(directory, testname, 'Plots')
+    os.makedirs(os.path.dirname(output_path), exist_ok=True) # Ensure the output directory exists
+    plt.savefig(os.path.join(output_path, f"R{modelname}_{date_string}_selector.png"), bbox_inches='tight', dpi=300) # Save the figure
     logger.info(f"Plot saved to {output_path}")
-    # ------------------------------------------------------------------------------------------------------------------- #
     logger.info('############################################### END SELECTOR MAIN ###############################################')
 
+# ------------------------------------------------------------------------------------------------------------------- #
+# In[11]: ALLOW THE SCRIPT TO BE EXECUTED FROM THE TERMINAL WITH COMMAND-LINE ARGUMENTS
 if __name__ == "__main__":
-    # Allow the script to be executed from the terminal with command-line arguments
     parser = argparse.ArgumentParser(description="Run SelectorPI_controller_operative.")
     parser.add_argument("modelname", type=str, help="Model name (e.g., '1' or '2').")
-    parser.add_argument(
-        "--now", type=str, default=None, 
-        help="Optional datetime in the format 'YYYY-MM-DD HH:MM:SS'. Defaults to the current time."
-    )
+    parser.add_argument("--now", type=str, default=None, help="Optional datetime in the format 'YYYY-MM-DD HH:MM:SS'. Defaults to the current time.")
     args = parser.parse_args()
-
     modelname = args.modelname
     now = datetime.strptime(args.now, "%Y-%m-%d %H:%M:%S") if args.now else datetime.now()
     main(modelname, now)
