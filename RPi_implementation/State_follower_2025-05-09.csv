@@ -1,0 +1,2 @@
+Timestamp,error,integral,integral_past,u_p,u_i,u_i_past,control_signal,saturation,selection
+2025-05-09 21:00:00,-0.1381790565499088,11069.718892061906,0,-0.0006320310046592829,-7.239836291081377e-05,0.0,-9.5e-05,Low,True

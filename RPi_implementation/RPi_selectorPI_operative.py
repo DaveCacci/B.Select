@@ -1,19 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
-#
+
+# SPECIFY UNITS OF MEASUREMENTS!!!!!!!!!!!!!!!!!!!!!!!!!! (tipo dt in seconds, flowrate in mL/day, etc)
 # 21.03.2025 TO DO:
 # 1. Change data variable names (taking from raw_data.csv)?
 # 2. Change setpoint variable names (taking from setpoint.csv)?
 # 3. Change the parameter of the controller after Modelica optimization
 # 4. Change conversion from flow-rate of tomato to PWM
 # 5. Change the path of the output plots and csv files
-
-"""
-TO DO
-> verify if better to save functions outside this script as .py to run it with .bat and Windows Scheduler
-> ADD PLOT OF CONTROL ACTION AND COLOR TO IDENTIFY WHICH CONTROLLER IS ACTIVE
-"""
-# In[1]:
+# In[1]: IMPORT STANDARD LIBRARIES
 import pandas as pd
 import configparser
 import pylab as pl
@@ -24,60 +19,34 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import convolve
 import sys
-# In[2]:
-sys.path.insert(0, '/home/davidecacci/NMPC') #Add the path to the 'NMPC' library is (in order to place this .py in a specific subfolder)
-sys.path.insert(0, '/home/davidecacci/NMPC/Real/awite') #Add the path to the 'preprocess_meas.py'  
+import argparse
+
+# In[2]: IMPORT CUSTOM LIBRARIES
 from general_utils.read_file import*
 from general_utils.save_df import*
 from general_utils.udm_gas_conversion import udm_gas_conversion
-from SelectorPI_controller import*
 from general_utils.create_dataframe import create_dataframe
-import argparse
 from general_utils.convert_u_to_pwm import*
 from general_utils.FlexiblePlotter import*
-# In[3]:
-# FUNCTION TO EXTRACT ROW CORRESPONDING TO CURRENT TIME OF CONTROL RUN
-# From the 'setpoint' csv file, extract the nearest row to the current code runtime based on the rounded value of the 'Timestamp' column
-# In the 'setpoint' csv file, 'Timestamp' column is rounded to one point for each hour (HH:00:00).
-def extract_nearest_row(dataframe,current_time):
-    """
-    Extract the row from a DataFrame corresponding to the nearest current timestamp,
-    rounded to the hour period.
+from general_utils.extract_nearest_row import extract_nearest_row
+sys.path.insert(0, 'C:\\Users\\lenovo\\OneDrive - Politecnico di Milano\\Work_cloud\\DOTTORATO\\Sperimentazione UIT\\SelectorPI controller') #Add to PATH the path of the SelectorPI_controller.py file
+from SelectorPI_controller import PIController, HysteresisComparator
 
-    Parameters:
-    - dataframe (pd.DataFrame): DataFrame with timestamp column.
-
-    Returns:
-    - nearest_row (pd.Series): Series containing the row data.
-    """
-
-    # Ensure that the DataFrame has a timestamp column
-    if 'Timestamp' not in dataframe.columns:
-        raise ValueError("DataFrame must have a 'timestamp' column.")
-
-    # Get the current timestamp rounded to the hour period
-    current_time = current_time.replace(microsecond=0, second=0, minute=0)
-
-    # Find the index of the nearest timestamp in the DataFrame
-    nearest_index = (dataframe['Timestamp'] - current_time).abs().idxmin()
-
-    # Extract the row corresponding to the nearest timestamp
-    nearest_row = dataframe.loc[nearest_index]
-
-    return nearest_row
-
-#------------------------------------------------------------------------------------------------------------#
+# In[3]: DECLARE THE MAIN FUNCTION (ALLOW TO CALL IT FROM OTHER SCRIPTS) AND SETUP LOGGER
 def main(modelname, now: datetime = datetime.now()):
-    save_out = True 
-    #modelname = '1' #or '2'
-    testname = '' #nothing if called from reactors_control.py, else 'Real'.
-    directory = os.getcwd()
-    # --------------------------------------------------- #
-    # DECLARE LOGGER
-    # Configure logging
-    log_directory = os.path.join(directory, testname, "logs")
+    '''MAIN FUNCTION TO RUN THE SELECTOR PI CONTROLLER ON RASPBERRY PI
+    INPUTS: modelname (str): The name of the model to use (e.g. '1' or '2').
+            now (datetime): The current datetime for the control evaluation.
+    OUTPUTS: Saves the control action and logs to specified files.'''
+
+    # modelname = '1' #or '2' # If the desire is to run the present code stand alone, delete main function and unindent the code below. Then uncomment this line,
+    directory = os.getcwd() # Modify if this code from another directory with respect to where the input and output files are stored and willing to be saved
+    testname = ''  # If there is a specific test subfolder name of the <directory>, specify it here (e.g., '/Selector_test')
+    # ------------------------------------------------------------------------------------------------------------------- #
+    # DECLARE AND CONFIGURE LOGGER
+    log_directory = os.path.join(directory, testname, "logs") # A subfolder 'logs' is created inside the test folder
     os.makedirs(log_directory, exist_ok=True)
-    log_file = os.path.join(log_directory, 'selector_logging_2.log')
+    log_file = os.path.join(log_directory, 'selector_logging.log') # Specify the log file name
     logger = logging.getLogger()
     # Clean up any existing handlers for this logger
     for handler in logger.handlers[:]:
@@ -88,10 +57,8 @@ def main(modelname, now: datetime = datetime.now()):
     file_handler.setLevel(logging.INFO)
     file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     file_handler.setFormatter(file_formatter)
-
     # Add handlers to the logger
     logger.addHandler(file_handler)
-
     if not logger.handlers:  # Avoid duplicate handlers
         # Console handler for displaying logs in the terminal
         console_handler = logging.StreamHandler()
@@ -100,92 +67,66 @@ def main(modelname, now: datetime = datetime.now()):
         console_handler.setFormatter(console_formatter)
         # Add handlers to the logger
         logger.addHandler(console_handler)
-
     logger.setLevel(logging.INFO)
     logger.info('############################################### START SELECTOR MAIN ###############################################')
-    # --------------------------------------------------- #
-    # now = datetime(2025,5,1,4,0) #datetime.now()
-    # Round to the nearest hour (modified on 28.03.2025?)
-    now = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1 if now.minute >= 30 else 0)
-    start_timestamp = now - timedelta(days=3, minutes=5) # THIS MUST BE HIGHER THAN THE WIDTH OF THE MOVING AVERAGE WINDOW
-    end_timestamp = now
-    log = True
 
-    # In[4]:
-    # FUNCTION TO LOAD THE CSV DATA FILES
-    # -----------------------------------------------------------------------------------------------------------------
-    # READ PAST MEASUREMENTS DATA
-    y_df_on_path = os.path.join(directory, testname, 'awite', f'y_df_data_on_alt_R{modelname}.csv')
+    # ------------------------------------------------------------------------------------------------------------------- #
+    # In[4]: LOAD THE INPUT DATA FILES FROM CSV (MEASUREMENTS)
+    # Round to the nearest hour (modified on 28.03.2025): needed only if this program is run together with another time-sensitive process (e.g. preprocessing of measurements each hour during last experimentation campaign).
+    now = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1 if now.minute >= 30 else 0) # datetime(2025,5,1,4,0) #datetime.now() # For testing purposes, fix a date here
+    # Define current date for logging
+    log_date = now.strftime('%Y-%m-%d')
+
+    # Read past measurements data from CSV file
+    y_df_on_path = os.path.join(directory, testname, f'y_df_data_on_alt_R{modelname}.csv') # Path of the CSV file with measurements data
     y_df_data_on = pd.read_csv(y_df_on_path, sep=',', header=0, parse_dates=['Timestamp'])
-    # Convert gas_rate from L/h to mmol/L/day
-    #y_df_data_on['gas_rate'] = udm_gas_conversion(y_df_data_on['gas_rate_out_ma'], (42+273.15), 1.035, 12, 'Lh')
-    # Keep only the specified columns in y_df_data_on
+    # Keep only some columns in y_df_data_on
     y_df_data_on = y_df_data_on[['Timestamp', 'gas_rate_out_ma', 'xM_gb_out', 'xC_gb_out']]
 
-    # Extract the last two days of data from y_df_data_on
+    # Extract the last TOT days of data from y_df_data_on
     y_df_data_on['Timestamp'] = pd.to_datetime(y_df_data_on['Timestamp'])
+    start_timestamp = now - timedelta(days=3, minutes=5) # Window of past data to be read and used for plotting. Must be greater than the moving average window in the preprocessing of measurements 
+    end_timestamp = now
     combined_dataframe = y_df_data_on[(y_df_data_on['Timestamp'] >= start_timestamp) & (y_df_data_on['Timestamp'] <= end_timestamp)] # Just to preserve old name of UIT selector
 
     # Calculate mean and standard deviation of dataset (not strictly necessary)
-    # To have an idea of the threshold to be used for outlier detection and replacement
     mean_R2 = combined_dataframe['gas_rate_out_ma'].mean()
     stdev_R2 = combined_dataframe['gas_rate_out_ma'].std()
-    logger.info(f"""dataset_gas_rate_mean = {mean_R2},
-    dataset_gas_rate_mean = {stdev_R2}""")
+    logger.info(f"""dataset_gas_rate_mean = {mean_R2}, dataset_gas_rate_mean = {stdev_R2}""")
+
     # Calculate methane flowrate ('ch4_rate') and gas ratio ('ratio') as ch4/co2
-    # If there are values with co2% = 0, return 0 for that time instant 
-    rate = f'gas_rate_out_ma' # Gas rate
-    ch4 = f'xM_gb_out' # Methane percentage in gas
-    co2 = f'xC_gb_out' # Carbon dioxide percentage in gas
+    rate = f'gas_rate_out_ma' # Gas rate. Must be in (L/h). If not, convert above with 'udm_gas_conversion' (but then re-design the controller parameters accordingly)
+    ch4 = f'xM_gb_out' # Methane percentage in gas. Must be a fraction (0-1).
+    co2 = f'xC_gb_out' # Carbon dioxide percentage in gas. Must be a fraction (0-1).
     combined_dataframe['ch4_rate'] = combined_dataframe[rate]*combined_dataframe[ch4]
     combined_dataframe['co2_rate'] = combined_dataframe[rate]*combined_dataframe[co2]
-    # Identify rows where 'co2' column is 0
+    # If there are values with co2% = 0, return 0 for that time instant. Identify rows where 'co2' column is 0
     zero_value_rows = combined_dataframe[combined_dataframe[co2] == 0]
-    # Print the corresponding 'timestamp' values
-    null_values_msg = 'Yes' if combined_dataframe[co2].any() == 0 else 'No'
     logger.info("Timestamps corresponding to rows with 'co2' = 0:")
     logger.info(zero_value_rows['Timestamp'].tolist())
     combined_dataframe['co2ch4'] = np.where(combined_dataframe[co2] == 0, 0, combined_dataframe[co2]/combined_dataframe[ch4])
 
-    # In[18]:
-    # START OF CONTROL COMPUTATION FOR THE CURRENT CONTROL EVALUATION
-    # -------------------------------------------------------------------------------------------------------------------
-    # Define current date (for logging)
-    current_date = datetime.now().strftime('%Y-%m-%d')
-    log_date = current_date
-    # -------------------------------------------------------------------------------------------------------------------
-    # READ DATA POINT FOR THE CURRENT CODE RUN (LAST ROW OF THE READ CSV FILES)
-    # QUESTION: read 'co2/ch4' setpoint from file or fix constant value? 
+    # Extract data point for the current control step (last row of the read CSV files)
     last_row = combined_dataframe.iloc[-1]
     current_time = last_row['Timestamp']
-    # Methane flowrate
     measure1 = last_row['ch4_rate']
-    # -------------------------------------- CONSTANT VALUES OR NOT?
-    #CO2/CH4 gas ratio
-    measure2 = last_row['co2ch4'] if last_row['co2ch4'] != 0 else 0.842 #Number of "optim_ss" simulation of 26.01.2024
-    # -------------------------------------------------------------------------------------------------------------------
-    # READ SETPOINTS FROM CSV FILE FOR THE CURRENT CODE RUN (nearest row with respect to 'current_time')
-    # LOAD SETPOINTS FROM THE OFFLINE OPTIMIZATION MADE WITH AGRI-ACODM
+    measure2 = last_row['co2ch4'] if last_row['co2ch4'] != 0 else 0.842 # Value taken from "optim_ss" simulation of 26.01.2024
+
+    # ------------------------------------------------------------------------------------------------------------------- #
+    # In[18]: LOAD THE INPUT DATA FILES FROM CSV (SETPOINTS)
+    # Read setpoints from CSV file for the current control step (nearest row with respect to 'current_time')
     try:
-        y_ref = read_and_split_txt(os.path.join(directory, testname, "Input", 'Output_setpoints.txt'), log=True)
+        y_ref = read_and_split_txt(os.path.join(directory, testname, 'Output_setpoints.txt'), log=True)
         y_ref = create_dataframe(['Qch4_ref', 'co2ch4_ref'], [pd.Series(y_ref[1]), pd.Series(y_ref[2])], datetime(2025,4,30,10,0))
-        # Convert UdM to mmol/L/day
-        #y_ref['Qch4_ref'] = udm_gas_conversion(y_ref['Qch4_ref'], (42+273.15), 1.035, 12, 'Lh')
-        y_ref['co2ch4_ref'] = 0.85 #No more from 12:00 30.06.2025
-        y_ref['TresholdLow'] = y_ref['co2ch4_ref'] + 0.05 # -------------------------------------------- CONSTANT VALUES OR NOT?
-        y_ref['TresholdHigh'] = y_ref['co2ch4_ref'] + 0.1 # -------------------------------------------- CONSTANT VALUES OR NOT?
+        y_ref['co2ch4_ref'] = 0.85 # Replace with "y_ref['Setpoint2']" if time-varying setpoint is desired
+        y_ref['TresholdLow'] = y_ref['co2ch4_ref'] + 0.05 # Replace with "y_ref['TresholdLow']" if time-varying setpoint is desired
+        y_ref['TresholdHigh'] = y_ref['co2ch4_ref'] + 0.1 # Replace with "y_ref['TresholdHigh']" if time-varying setpoint is desired
         y_ref['Timestamp'] = pd.to_datetime(y_ref['Timestamp'], format="%Y-%m-%d %H:%M:%S")
         logger.info("Setpoints loaded")
         # Extract row nearer to the current running time or last timestamp of the data files
-        setpoints_row = extract_nearest_row(y_ref, current_time)
-        setpoint_error = 'No'
-        
+        setpoints_row = extract_nearest_row(y_ref, current_time) # The 'Timestamp' column is rounded to one point for each hour (HH:00:00).
     except Exception  as e:
         logger.error(e)
-        setpoint_error = e
-        setpoint_row = {'Qch4_ref':measure1,'co2ch4_ref':measure2,'TresholdLow':measure2+0.05,'TresholdHigh':measure2+0.1}
-        
-    # Declare variables extracting reading quantities from the above-defined csv file of setpoints
     setpoint1 = setpoints_row['Qch4_ref']
     setpoint2 = setpoints_row['co2ch4_ref'] # -------------------------------------------- CONSTANT VALUES OR NOT?
     threshold_low = setpoints_row['TresholdLow'] # -------------------------------------------- CONSTANT VALUES OR NOT?
@@ -194,49 +135,42 @@ def main(modelname, now: datetime = datetime.now()):
         logger.warning('Uncorrect relation between setpoint2 and tresholds')
 
     # Log for "boundary" conditions of the controller computations for the current evaluation
-    data_filepath = os.path.join(directory, testname, 'Selector',f'Buondary_calc_conditions_{log_date}.csv')
+    data_filepath = os.path.join(directory, testname, f'Buondary_calc_conditions.csv') # Add 'log_date' to filename if desired to create a new file for each day
     new_row_data = {'Timestamp_setpoints':setpoints_row['Timestamp'],'Timestamp_measures':current_time,
                     'ch4_setpoint':setpoint1, 'ch4_measure':measure1,
                     'co2/ch4_setpoint':setpoint2, 'co2/ch4_measure':measure2,
-                    'threshold_low':threshold_low,'threshold_high':threshold_high,
-                }
+                    'threshold_low':threshold_low,'threshold_high':threshold_high}
     new_row_data_df = pd.DataFrame([new_row_data])
     new_row_data_df.insert(0, 'Timestamp', now) # Add the current timestamp to the DataFrame
-    #timestamp = now #datetime.now() #????????????????????
-    #df = df.append({'Timestamp_control':timestamp,**new_row_data}, ignore_index=True)
-    #append_row_to_csv(data_filepath, new_row_data)
-    save_df_with_check(new_row_data_df, data_filepath, log=True)
-    data_filepath = os.path.join(directory, testname, 'Selector',f'Buondary_calc_conditions.csv')
     save_df_with_check(new_row_data_df, data_filepath, log=True)
 
-
-    # In[20]:
-    # COMPUTE ERRORS for the current evaluation run
+    # ------------------------------------------------------------------------------------------------------------------- #
+    # In[20]: COMPUTE ERRORS, INSTANTIATE CONTROLLERS AND LOAD PAST CONTROLLER STATE
+    # Compute the control errors
     error1 = setpoint1 - measure1
     error2 = setpoint2 - measure2
-    dt = 3*3600 #2.5*3600  # Control interval in seconds! QUESTION: Fix it or compute from timestamps in the logs?
-    # -------------------------------------------------------------------------------------------------------------------
-    # DEFINE CONTROLLER PARAMETERS
-    saturation_high = 300/1e6
-    saturation_low = -99/1e6
-    kp1 = 0.00136/2 #0.003
-    kp2 = 0.004574 #0.008
-    Ti1 = 144644 #64000
-    Ti2 = 94283 #64000
-    # -------------------------------------------------------------------------------------------------------------------
-    # INIT AND LOAD CONTROLLER PAST STATE
-    #Initialize the PI controller controllers for each run
+    dt = 3*3600 # Specify control interval (in seconds). Must be consistent with the frequency of code execution
+    # Define controller parameters
+    saturation_high = 300/1e6 # Control action flow rate (in mL/day converted to m3/s)
+    saturation_low = -99/1e6 # Control action flow rate (in mL/day converted to m3/s)
+    kp1 = 0.00068 # Note: divided by 2 with respect to UIT implementation after re-tuning on 11.05.2025
+    kp2 = 0.004574 
+    Ti1 = 144644 
+    Ti2 = 94283
+
+    #Initialize the PI controllers controllers from the 'PIController' class (defined in SelectorPI_controller.py)
     controller1 = PIController(name = "Header", kp = kp1, ki = kp1/Ti1, current_timestamp=now,
                                 saturation_low =saturation_low, saturation_high = saturation_high, saturate_integral=False, logger=logger)
     controller2 = PIController(name = "Follower", kp = kp2, ki = kp2/Ti2, current_timestamp=now,
                                 saturation_low = saturation_low, saturation_high = saturation_high, saturate_integral=False, logger=logger)
 
-    # Load the state from the previous run
+    # Load the state from the previous run (last saved state)
     controller1.load_state(log_date, filename=os.path.join(directory, testname, 'Selector',f'State_header_{log_date}.csv'))
     controller2.load_state(log_date, filename=os.path.join(directory, testname, 'Selector',f'State_follower_{log_date}.csv'))
 
-    # In[22]:
-    # SELECTION OF THE ACTIVE CONTROLLER (and eventual REINIT)
+    # ------------------------------------------------------------------------------------------------------------------- #
+
+    # In[22]: SELECTION OF THE ACTIVE CONTROLLER (and eventual override)
     # Defines a boolean 'condition' as the state of the hysteresis comparator function
     # When 'edge' of 'condition', REINIT is triggered
     if not controller2.log_df.empty:
@@ -260,7 +194,6 @@ def main(modelname, now: datetime = datetime.now()):
         controller1.reset_state(derired_value_controller1)
 
     # In[23]:
-
     # COMPUTATION OF THE CONTROL ACTION FOR BOTH CONTROLLERS
     # SWITCH SELECTION OF THE CONTROL ACTION BASED ON WHICH CONTROLLER IS ACTIVE (based on 'condition' defined above)
     # Calculate the control output
@@ -419,8 +352,7 @@ def main(modelname, now: datetime = datetime.now()):
     logger.info('############################################### END SELECTOR MAIN ###############################################')
 
 if __name__ == "__main__":
-    # Allow the script to be executed from the terminal
-
+    # Allow the script to be executed from the terminal with command-line arguments
     parser = argparse.ArgumentParser(description="Run SelectorPI_controller_operative.")
     parser.add_argument("modelname", type=str, help="Model name (e.g., '1' or '2').")
     parser.add_argument(

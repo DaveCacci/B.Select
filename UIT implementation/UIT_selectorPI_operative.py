@@ -1,18 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
-"""
-TO DO
-> verify if better to save functions outside this script as .py to run it with .bat and Windows Scheduler
-"""
-
-
 # In[1]:
-
-
 import pandas as pd
 import configparser
 import pylab as pl
@@ -22,11 +11,14 @@ import shutil
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import convolve
-
+import sys
 
 # In[2]:
+from general_utils.extract_nearest_row import extract_nearest_row
+sys.path.insert(0, 'C:\\Users\\lenovo\\OneDrive - Politecnico di Milano\\Work_cloud\\DOTTORATO\\Sperimentazione UIT\\SelectorPI controller') #Add the path to the 'preprocess_meas.py'  
+from SelectorPI_controller import PIController_uit, HysteresisComparator_uit
 
-
+# In[2]:
 # FUNCTION TO WRITE THE DIRECTORY PATH OF DATA
 # Depending on the reactor number (1 or 2) as contained in directory name
 def get_directory_path(base_directory, reactor):    
@@ -46,10 +38,7 @@ reactor_number = 2
 reactor = f'R{reactor_number}'
 print(get_directory_path(base_directory,reactor))
 
-
 # In[3]:
-
-
 # FUNCTION TO FIND #'num_files' MOST RECENT DATA FILES IN THE DIRECTORY 
 # Depending on the distance of the timestamp written in the file name with respect to the current date of running
 def load_most_recent_csv_files(directory_path,num_files=2):
@@ -58,7 +47,8 @@ def load_most_recent_csv_files(directory_path,num_files=2):
 
     if not csv_files:
         no_files = 'No .csv files in the directory'
-        return _, no_files, _
+        warning_msg = 'No .csv files in the directory'
+        return None, no_files, warning_msg
 
     # Step 2: Extract timestamps from the file names
     timestamps = [datetime.strptime(file.split('_')[0], "%Y-%m-%d") for file in csv_files]
@@ -87,10 +77,7 @@ num_recent_files = 2
 directory_path = get_directory_path(base_directory,reactor)
 recent_csv_files, success_find_data, warning_find_data = load_most_recent_csv_files(directory_path, num_recent_files)
 
-
 # In[4]:
-
-
 # FUNCTION TO LOAD THE CSV DATA FILES
 # It returns a dataframe (empty if it fails)
 def read(recent_csv_files):
@@ -122,8 +109,6 @@ except Exception as e:
 
 
 # In[5]:
-
-
 # Calculate mean and standard deviation of dataset (not strictly necessary)
 # To have an idea of the threshold to be used for outlier detection and replacement
 mean_R2 = combined_dataframe['2F1.1 [L/h]'].mean()
@@ -131,10 +116,7 @@ stdev_R2 = combined_dataframe['2F1.1 [L/h]'].std()
 print(f"""dataset_gas_rate_mean = {mean_R2},
 dataset_gas_rate_mean = {stdev_R2}""")
 
-
 # In[6]:
-
-
 # CODE FOR OUTLIER DETECTION AND REPLACEMENT
 # It finds the data points with Z-score > threshold
 # Substitutes those data point with a linear interpolation between the previous and the next 'non-outlier' data points
@@ -215,10 +197,7 @@ except Exception as e:
     combined_dataframe[f'{reactor_number}X11Q3 [V% CH4]_out'] = combined_dataframe[ch4]
     combined_dataframe[f'{reactor_number}X11Q2 [V% CO2]_out'] = combined_dataframe[co2]
 
-
 # In[7]:
-
-
 # Calculate methane flowrate ('ch4_rate') and gas ratio ('ratio') as ch4/co2
 # If there are values with co2% = 0, return 0 for that time instant 
 try:
@@ -239,9 +218,7 @@ except Exception as e:
     error_calc = e
     print(e)
 
-
 # In[9]:
-
 
 # FUNCTION FOR FIR FILTERING OF DATA (moving average)
 def moving_average_filter(signal, window_size):
@@ -263,10 +240,7 @@ combined_dataframe['filtered_gas_rate'], filter_error = moving_average_filter(co
 combined_dataframe['filtered_ch4_rate'],filter_error = moving_average_filter(combined_dataframe['ch4_rate'], window_size)
 combined_dataframe['filtered_ratio'],filter_error = moving_average_filter(combined_dataframe['gas_ratio'], window_size)
 
-
 # In[10]:
-
-
 # Plotting the results: GAS RATE
 try:
     fig,ax = plt.subplots(figsize=(10, 5))
@@ -284,10 +258,7 @@ try:
 except Exception as e:
     print(e)
 
-
 # In[11]:
-
-
 # Plotting the results: CH4 RATE
 try:
     fig,ax = plt.subplots(figsize=(10, 5))
@@ -303,10 +274,7 @@ try:
 except Exception as e:
     print(e)
 
-
 # In[12]:
-
-
 # Plotting the results: RATIO (note: co2/ch4!!)
 try:
     fig,ax = plt.subplots(figsize=(10, 5))
@@ -323,117 +291,7 @@ try:
 except Exception as e:
     print(e)
 
-
-# In[14]:
-
-
-# FUNCTION TO DEFINE PI controller with saturation and anti wind-up
-# Choice to saturate the integral term or not
-# Logs quantities of interest in a dataframe 'log_df'
-class PIController:
-    # INIT
-    def __init__(self, name, kp, ki, saturation_low=None, saturation_high=None, saturate_integral=True):
-        self.name = name
-        self.kp = kp
-        self.ki = ki
-        self.saturation_low = saturation_low
-        self.saturation_high = saturation_high
-        self.saturate_integral = saturate_integral
-        self.log_df = pd.DataFrame(columns=['timestamp', 'error', 'integral','integral_past','u_p','u_i','u_i_past','control_signal','saturation','selection'])
-
-    # -------------------------------------------------------------------------------------------------------------------
-    # COMPUTE CONTROL SIGNAL FROM ERROR AND PAST INTEGRAL TERM
-    def compute(self, error, dt, selection):
-        # Past integral term loaded from the last row of dataframe 'log_df'
-        integral_past = self.log_df['integral'].iloc[-1] if not self.log_df.empty else 0 #Default starting value
-        # Integral 
-        integral = integral_past + error * dt #dt = control interval
-
-        # Apply saturation to the integral term if specified
-        if self.saturate_integral:
-            if self.saturation_low is not None and integral < self.saturation_low:
-                integral = self.saturation_low
-            elif self.saturation_high is not None and integral > self.saturation_high:
-                integral = self.saturation_high
-
-        # Calculate the control action
-        u_p = self.kp * error # Proportional action
-        u_i_past = self.ki*integral_past #Just for checking purposes. Must always be 'control_signal - u_p' at the previous iteration
-        u_i = self.ki * integral # Integral action
-        control_signal = u_p + u_i
-
-        # Apply saturation to the control signal
-        if self.saturation_low is not None and control_signal < self.saturation_low:
-            control_signal = self.saturation_low
-        elif self.saturation_high is not None and control_signal > self.saturation_high:
-            control_signal = self.saturation_high
-            
-        # If 'control_signal' is in saturation, apply anti-windup
-        if control_signal <= self.saturation_low:
-            saturation = 'Low'
-            integral = (control_signal - u_p)/self.ki
-        elif control_signal >= self.saturation_high:
-            saturation = 'High'
-            integral = (control_signal - u_p)/self.ki
-        else:
-            saturation = 'No'
-
-        # Log the quantities of interest
-        timestamp = datetime.now()
-        self.log_df = self.log_df.append({'timestamp': timestamp, 'error': error, 'integral': integral,'integral_past': integral_past,'u_p':u_p,'u_i':u_i,'u_i_past':u_i_past,
-                                          'control_signal':control_signal,'saturation':saturation,'selection': selection}, ignore_index=True)
-        
-        return control_signal
-    
-    # -------------------------------------------------------------------------------------------------------------------
-    # FUNCTION TO LOAD 'integral_past' FROM PREVIOUS CONTROL EVALUATIONS
-    # Checks current date log. If not, takes the log file of the previous date
-    # If there are no current and previous date log files, 'integral_past' restart from default value (0).
-    def load_state(self, filename=None):
-        # If filename is not provided, use a default filename based on the controller's name
-        if filename is None:
-            filename = f"{self.name}_{log_date}_state.csv"
-        
-        # Load the log_df DataFrame from a file
-        try:
-            self.log_df = pd.read_csv(filename)
-            print(f"Loaded integral state from {filename}")
-            
-        except FileNotFoundError:
-            previous_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-            file_path_previous = f"{self.name}_{previous_date}_state.csv"
-            try:
-                self.log_df = pd.read_csv(file_path_previous).iloc[[-1]]
-                print(f"Loaded integral state for {self.name} from {file_path_previous}")
-                
-            except FileNotFoundError:
-                print(f"No integral state file found for {self.name} from the current or previous day. Initializing from default state.")
-                
-    # -------------------------------------------------------------------------------------------------------------------
-    # REINIT FUNCTION 
-    # ADD a line to the log of the controller whose state must be reinitialized at the current control evaluation
-    # With a desired value to allow for coherence between the states of the two controllers
-    # To be run before control computation, so that 'desired_value' is laoded as the last row of 'integral'
-    def reset_state(self, desired_value):
-        timestamp = datetime.now()
-        new_row = {'timestamp': timestamp, 'error': '-', 'integral': desired_value,'control_signal':'-','selection': str('reselected')}
-        self.log_df = self.log_df.append(new_row, ignore_index=True)
-        
-    # -------------------------------------------------------------------------------------------------------------------
-    # FUNCTION TO SAVE QUANTITIES OF INTEREST TO CSV AT THE CURRENT CONTROLLER EVALUATION
-    # Usefull for the control evaluation at the next control instant 
-    def save_state(self, filename=None):
-        # If filename is not provided, use a default filename based on the controller's name
-        if filename is None:
-            filename = f"{self.name}_{log_date}_state.csv"
-        
-        # Save the log_df DataFrame to a file
-        self.log_df.to_csv(filename, index=False)
-
-
 # In[15]:
-
-
 # FUNCTION TO READ CSV FILES
 # Used to read setpoint csv file
 def read_csv_with_column_names(file_path):
@@ -455,68 +313,6 @@ def read_csv_with_column_names(file_path):
     df = pd.read_csv(file_path, header=0)  # Set header=0 to use the first row as column names
 
     return df
-# ---------------------------------------------------------------------------------------------------------------------------
-# FUNCTION TO EXTRACT ROW CORRESPONDING TO CURRENT TIME OF CONTROL RUN
-# From the 'setpoint' csv file, extract the nearest row to the current code runtime based on the rounded value of the 'Timestamp' column
-# In the 'setpoint' csv file, 'Timestamp' column is rounded to one point for each hour (HH:00:00).
-def extract_nearest_row(dataframe,current_time):
-    """
-    Extract the row from a DataFrame corresponding to the nearest current timestamp,
-    rounded to the hour period.
-
-    Parameters:
-    - dataframe (pd.DataFrame): DataFrame with timestamp column.
-
-    Returns:
-    - nearest_row (pd.Series): Series containing the row data.
-    """
-
-    # Ensure that the DataFrame has a timestamp column
-    if 'Timestamp' not in dataframe.columns:
-        raise ValueError("DataFrame must have a 'timestamp' column.")
-
-    # Get the current timestamp rounded to the hour period
-    current_time = current_time.replace(microsecond=0, second=0, minute=0)
-
-    # Find the index of the nearest timestamp in the DataFrame
-    nearest_index = (dataframe['Timestamp'] - current_time).abs().idxmin()
-
-    # Extract the row corresponding to the nearest timestamp
-    nearest_row = dataframe.loc[nearest_index]
-
-    return nearest_row
-
-
-# In[16]:
-
-
-# FUNCTION TO DEFINE HYSTERESIS COMPARATOR
-# To compare 'co2/ch4' measurement point with its safety threshold to trigger control switches
-# 'co2/ch4' setpoint < treshold low > treshold high 
-# Boolean state depending on 'co2/ch4' measurement laying below treshold low (False) or above treshold high (True)
-# If 'co2/ch4' lays within the two tresholds, this function doesn't change its state
-class HysteresisComparator:
-    # INIT
-    def __init__(self, threshold_low, threshold_high):
-        self.threshold_low = threshold_low
-        self.threshold_high = threshold_high
-        self.state = False  # Initial state
-    # -------------------------------------------------------------------------------------------------------------------
-    # UPDATE COMPARATOR STATE
-    def update(self, value):
-        if value < self.threshold_low:
-            self.state = False
-        elif value > self.threshold_high:
-            self.state = True
-        # If the value is between the thresholds, maintain the current state
-        #What if threshold_high<threshold_low ?
-
-        return self.state
-    # -------------------------------------------------------------------------------------------------------------------
-    # FUNCTION TO MOVE FROM STATE TO STRING (needed for later code usage)
-    def get_state_as_string(self):
-        return str(self.state)
-
 
 # In[17]:
 
@@ -552,8 +348,6 @@ def append_row_to_csv(file_path, new_row_dict):
 
 
 # In[18]:
-
-
 # START OF CONTROL COMPUTATION FOR THE CURRENT CONTROL EVALUATION
 # -------------------------------------------------------------------------------------------------------------------
 # Define current date (for logging)
@@ -620,16 +414,16 @@ dt = 2.5*3600  # Control interval in seconds! QUESTION: Fix it or compute from t
 # DEFINE CONTROLLER PARAMETERS
 saturation_high = 300/1e6
 saturation_low = -95/1e6
-kp1 = 1e-2
-kp2 = 1e-2
-Ti1 = 1e5
-Ti2 = 1e5
+kp1 = 1e-2 #0.003
+kp2 = 1e-2 #0.008
+Ti1 = 1e5 #64000
+Ti2 = 1e5 #64000
 # -------------------------------------------------------------------------------------------------------------------
 # INIT AND LOAD CONTROLLER PAST STATE
 try:
     #Initialize the PI controller controllers for each run
-    controller1 = PIController(name = "Header", kp = kp1, ki = kp1/Ti1, saturation_low =saturation_low, saturation_high = saturation_high, saturate_integral=False)
-    controller2 = PIController(name = "Follower", kp = kp2, ki = kp2/Ti2, saturation_low = saturation_low, saturation_high = saturation_high, saturate_integral=False)
+    controller1 = PIController_uit(name = "Header", kp = kp1, ki = kp1/Ti1, saturation_low =saturation_low, saturation_high = saturation_high, saturate_integral=False)
+    controller2 = PIController_uit(name = "Follower", kp = kp2, ki = kp2/Ti2, saturation_low = saturation_low, saturation_high = saturation_high, saturate_integral=False)
 
     # Load the state from the previous run
     controller1.load_state()
@@ -658,7 +452,7 @@ try:
     derired_value_controller2 = (float(controller1.log_df.iloc[-1]['control_signal'])-controller2.kp*error2)/controller2.ki if not controller1.log_df.empty else 0
 
     #condition = True if measure2 > threshold else False
-    hysteresis_comp = HysteresisComparator(threshold_low=threshold_low, threshold_high=threshold_high)
+    hysteresis_comp = HysteresisComparator_uit(threshold_low=threshold_low, threshold_high=threshold_high)
     condition = hysteresis_comp.update(measure2)
 
     # Check for the edge condition change
@@ -757,8 +551,6 @@ append_row_to_csv(output_filepath, new_row_output)
 
 
 # In[27]:
-
-
 # FUNCTION TO FIND THE MOST RECENT AVAILABLE .INI FILE based on timestamp in its filename
 # QUESTION: Input .ini (last available) must be taken from the last available file in "Parameter correct"...or from Bioreator/Parameter?
 def load_closest_ini_file(directory_path):
@@ -767,7 +559,8 @@ def load_closest_ini_file(directory_path):
 
     if not ini_files:
         no_files = 'No .ini files in the directory'
-        return _, no_files, _
+        warning_msg = 'No .ini files in the directory'
+        return None, no_files, warning_msg
 
     # Step 2: Extract timestamps from the file names
     timestamps = [datetime.strptime(file.split('_')[1] + '_' + file.split('_')[2].split('.')[0], "%Y-%m-%d_%H-%M-%S") for file in ini_files]
@@ -834,13 +627,9 @@ def update_ini_file(input_config_file_path, input_directory, output_directory, o
     {output_file_path} and
     {copy_file_path}"""
     return success_msg
-
 #How to check if it has been read by the programm? Controllo poi i log
 
-
 # In[28]:
-
-
 # FIND LAST AVAILABLE .INI AND UPDATE IT
 # Find it in...
 input_directory = 'C:/Users/lenovo/OneDrive - Politecnico di Milano/Work_cloud/DOTTORATO/Modelling/Pilot_plant/UIT controller'
@@ -858,10 +647,7 @@ except Exception as e:
     write_success_update = 'No update of .ini files becouse error in updating'
 print(write_success_update)
 
-
 # In[31]:
-
-
 # SUMMARY LOG OF WARNING, ERRORS AND SUCCESS MESSAGES for the current control run
 # Creates a txt in append mode for the current date
 # Logs the messages along with the current timestamp to a text file
