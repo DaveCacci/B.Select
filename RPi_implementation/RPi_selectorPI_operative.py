@@ -1,23 +1,25 @@
 #!/usr/bin/env python
 # coding: utf-8
+'''
+### Biomethane production Optimal Control with the 'Selector-PI' feedback online controller (Biogoals.Select tool)
+**Authors:** Davide Carecci  
+**Created:** May 2025  
+**Last Modified:** October 28, 2025  
+**Version:** 1.1  
+**Institution:** Politecnico di Milano  
+#### Revision History
 
-# SPECIFY UNITS OF MEASUREMENTS!!!!!!!!!!!!!!!!!!!!!!!!!! (tipo dt in seconds, flowrate in mL/day, etc)
-# 21.03.2025 TO DO:
-# 1. Change data variable names (taking from raw_data.csv)?
-# 2. Change setpoint variable names (taking from setpoint.csv)?
-# 3. Change the parameter of the controller after Modelica optimization
-# 4. Change conversion from flow-rate of tomato to PWM
-# 5. Change the path of the output plots and csv files
+| Date       | Version | Author(s)              | Description                                                                                               |
+|------------|---------|------------------------|-----------------------------------------------------------------------------------------------------------|
+| 2025-05-01 | 1.0     | D. Carecci             | Initial implementation for experimental validation over the reactors in the BioTA lab (Valparaiso, Chile) |
+| 2025-10-28 | 1.1     | D. Carecci             | Code and folder cleaning and documentation for handle over a copy to A2A S.p.A                            |
+'''
 # In[1]: IMPORT STANDARD LIBRARIES
 import pandas as pd
-import configparser
-import pylab as pl
 import os
 from datetime import datetime, timedelta
-import shutil
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import convolve
 import sys
 import argparse
 
@@ -94,7 +96,7 @@ def main(modelname, now: datetime = datetime.now()):
     stdev_R2 = combined_dataframe['gas_rate_out_ma'].std()
     logger.info(f"""dataset_gas_rate_mean = {mean_R2}, dataset_gas_rate_mean = {stdev_R2}""")
 
-    # Calculate methane flowrate ('ch4_rate') and gas ratio ('ratio') as ch4/co2
+    # Calculate methane flowrate ('ch4_rate'), carbom dioxide flowrate ('co2_rate') and gas ratio ('ratio') as ch4/co2
     rate = f'gas_rate_out_ma' # Gas rate. Must be in (L/h). If not, convert above with 'udm_gas_conversion' (but then re-design the controller parameters accordingly)
     ch4 = f'xM_gb_out' # Methane percentage in gas. Must be a fraction (0-1).
     co2 = f'xC_gb_out' # Carbon dioxide percentage in gas. Must be a fraction (0-1).
@@ -113,8 +115,8 @@ def main(modelname, now: datetime = datetime.now()):
     measure2 = last_row['co2ch4'] if last_row['co2ch4'] != 0 else 0.842 # Value taken from "optim_ss" simulation of 26.01.2024
 
     # ------------------------------------------------------------------------------------------------------------------- #
-    # In[5]: LOAD THE INPUT DATA FILES FROM CSV (SETPOINTS)
-    # Read setpoints from CSV file for the current control step (nearest row with respect to 'current_time')
+    # In[5]: LOAD THE INPUT DATA FILES FROM TXT (SETPOINTS)
+    # Read setpoints from TXT file for the current control step (nearest row with respect to 'current_time')
     try:
         y_ref = read_and_split_txt(os.path.join(directory, testname, 'Input', 'Output_setpoints.txt'), log=True)
         y_ref = create_dataframe(['Qch4_ref', 'co2ch4_ref'], [pd.Series(y_ref[1]), pd.Series(y_ref[2])], datetime(2025,4,30,10,0))
@@ -128,14 +130,14 @@ def main(modelname, now: datetime = datetime.now()):
     except Exception  as e:
         logger.error(e)
     setpoint1 = setpoints_row['Qch4_ref']
-    setpoint2 = setpoints_row['co2ch4_ref'] # -------------------------------------------- CONSTANT VALUES OR NOT?
-    threshold_low = setpoints_row['TresholdLow'] # -------------------------------------------- CONSTANT VALUES OR NOT?
-    threshold_high = setpoints_row['TresholdHigh'] # -------------------------------------------- CONSTANT VALUES OR NOT?
+    setpoint2 = setpoints_row['co2ch4_ref']
+    threshold_low = setpoints_row['TresholdLow']
+    threshold_high = setpoints_row['TresholdHigh']
     if threshold_low > threshold_high:
         logger.warning('Uncorrect relation between setpoint2 and tresholds')
 
     # Log for "boundary" conditions of the controller computations for the current evaluation
-    data_filepath = os.path.join(directory, testname, 'Output', f'Buondary_calc_conditions.csv') # Add 'log_date' to filename if desired to create a new file for each day
+    data_filepath = os.path.join(directory, testname, 'Output', f'Boundary_calc_conditions.csv') # Add 'log_date' to filename if desired to create a new file for each day
     new_row_data = {'Timestamp_setpoints':setpoints_row['Timestamp'],'Timestamp_measures':current_time,
                     'ch4_setpoint':setpoint1, 'ch4_measure':measure1,
                     'co2/ch4_setpoint':setpoint2, 'co2/ch4_measure':measure2,
@@ -149,14 +151,14 @@ def main(modelname, now: datetime = datetime.now()):
     # Compute the control errors
     error1 = setpoint1 - measure1
     error2 = setpoint2 - measure2
-    dt = 3*3600 # Specify control interval (in seconds). Must be consistent with the frequency of code execution
+    dt = 3*3600 # Specify control interval (in seconds). Must be consistent with the frequency of code execution. Must be a multiple of 3600 seconds in this code version (27.10.2025)
     # Define controller parameters
-    saturation_high = 300/1e6 # Control action flow rate (in mL/day converted to m3/s)
-    saturation_low = -99/1e6 # Control action flow rate (in mL/day converted to m3/s)
+    saturation_high = 300/1e6 # Control action flow rate (in mL/day converted to m^3/s)
+    saturation_low = -99/1e6 # Control action flow rate (in mL/day converted to m^3/s)
     kp1 = 0.00068 # Note: divided by 2 with respect to UIT implementation after re-tuning on 11.05.2025
     kp2 = 0.004574 
-    Ti1 = 144644 
-    Ti2 = 94283
+    Ti1 = 144644 # In seconds
+    Ti2 = 94283 # In seconds
 
     #Initialize the PI controllers controllers from the 'PIController' class (defined in SelectorPI_controller.py)
     controller1 = PIController(name = "Header", kp = kp1, ki = kp1/Ti1, current_timestamp=now,
@@ -198,8 +200,8 @@ def main(modelname, now: datetime = datetime.now()):
     # ------------------------------------------------------------------------------------------------------------------- #
     # In[8]: COMPUTATION OF THE CONTROL ACTION (FOR BOTH CONTROLLERS) AND SELECTION OF THE FINAL CONTROL ACTION
     # Calculate the control signal for both controllers
-    control_output1 = controller1.compute(error1, dt, not condition)
-    control_output2 = controller2.compute(error2, dt, condition)
+    control_output1 = controller1.compute(error1, dt, not condition) # In m^3/s
+    control_output2 = controller2.compute(error2, dt, condition) # In m^3/s
 
     # Save the state of controllers for the next run
     controller1.save_state(log_date, filename=os.path.join(directory, testname, 'Output', f'{output_filename_header}_{log_date}.csv'))
@@ -221,12 +223,12 @@ def main(modelname, now: datetime = datetime.now()):
     period = 20 # On-period of the PWM (in seconds)
 
     # Convert
-    tuple_seconds_ini, on_periods_tot, conversion_error = convert_u_to_pwm(u_current, u_max, dt, pump_dose_per_minute, period)
+    tuple_seconds, on_periods_tot, conversion_error = convert_u_to_pwm(u_current, u_max, dt, pump_dose_per_minute, period)
     rounded_dosage = period*on_periods_tot*pump_dose_per_minute/60*24/dt*3600 # Just for checking purposes (in mL/day)
 
     # Save the computed PWM values to a CSV file
     pwm_star_dict = dict(zip(['on_sec', 'off_sec', 'tot_on_periods', 'rounded_dosage'],
-                    np.array([tuple_seconds_ini[0], tuple_seconds_ini[1], on_periods_tot, rounded_dosage])))
+                    np.array([tuple_seconds[0], tuple_seconds[1], on_periods_tot, rounded_dosage])))
     pwm_star_df = pd.DataFrame([pwm_star_dict])
     pwm_star_df.insert(0, 'Timestamp', now)
     save_df_with_check(pwm_star_df, os.path.join(directory, testname, "Input", f'SELECTOR_pwm_actual.csv'), log=True)
@@ -235,7 +237,7 @@ def main(modelname, now: datetime = datetime.now()):
     new_row_output = {'active':active_controller_name, 'ch4_error': error1, 'co2/ch4_error': error2, 
                     'c2/ch4-Trlow': measure2 - threshold_low, 'co2/ch4_TrHigh':measure2 - threshold_high, 
                     'final_control_signal':u_current, 'tot_on_periods':on_periods_tot,
-                    'on_seconds_ini':tuple_seconds_ini[0],'off_seconds_ini':tuple_seconds_ini[1]
+                    'on_seconds':tuple_seconds[0],'off_seconds':tuple_seconds[1]
                     }
     new_row_output_df = pd.DataFrame([new_row_output])
     new_row_output_df.insert(0, 'Timestamp', now) # Add the current timestamp to the DataFrame
