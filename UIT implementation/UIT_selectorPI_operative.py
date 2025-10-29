@@ -255,11 +255,11 @@ output_filename_header = 'State_header'
 output_filename_follower = 'State_follower'
 try:
     #Initialize the PI controllers controllers from the 'PIController' class (defined in SelectorPI_controller.py)
-    controller1 = PIController_uit(name = "Header", kp = kp1, ki = kp1/Ti1, saturation_low =saturation_low, saturation_high = saturation_high, saturate_integral=False)
-    controller2 = PIController_uit(name = "Follower", kp = kp2, ki = kp2/Ti2, saturation_low = saturation_low, saturation_high = saturation_high, saturate_integral=False)
+    header = PIController_uit(name = "Header", kp = kp1, ki = kp1/Ti1, saturation_low =saturation_low, saturation_high = saturation_high, saturate_integral=False)
+    follower = PIController_uit(name = "Follower", kp = kp2, ki = kp2/Ti2, saturation_low = saturation_low, saturation_high = saturation_high, saturate_integral=False)
     # Load the state from the previous run (last saved state)
-    controller1.load_state(log_date, filename=os.path.join(os.getcwd(), 'Output', f"{output_filename_header}_{log_date}.csv"))
-    controller2.load_state(log_date, filename=os.path.join(os.getcwd(), 'Output', f"{output_filename_header}_{log_date}.csv"))
+    header.load_state(log_date, filename=os.path.join(os.getcwd(), 'Output', f"{output_filename_header}_{log_date}.csv"))
+    follower.load_state(log_date, filename=os.path.join(os.getcwd(), 'Output', f"{output_filename_header}_{log_date}.csv"))
     controller_error = 'No'
 except Exception as e:
     print(e)
@@ -270,25 +270,25 @@ except Exception as e:
 # Defines a boolean 'condition' = state of the hysteresis comparator function. When 'edge' of 'condition', override is triggered
 # Extract previous condition from the last log entry
 try:
-    if not controller2.log_df.empty:
-     controller2.log_df.loc[controller2.log_df.index[-1],'selection'] = controller2.log_df.at[controller2.log_df.index[-1],'selection'] == 'True'
-    prev_condition = controller2.log_df.iloc[-1]['selection'] if not controller2.log_df.empty else False # At control initialization (k=0), set 'prev_condition' to False
+    if not follower.log_df.empty:
+     follower.log_df.loc[follower.log_df.index[-1],'selection'] = follower.log_df.at[follower.log_df.index[-1],'selection'] == 'True'
+    prev_condition = follower.log_df.iloc[-1]['selection'] if not follower.log_df.empty else False # At control initialization (k=0), set 'prev_condition' to False
 
     # Update the hysteresis comparator state with the current measurement2 ('co2/ch4 ratio')
     hysteresis_comp = HysteresisComparator_uit(threshold_low=threshold_low, threshold_high=threshold_high)
     condition = hysteresis_comp.update(measure2)
 
-    # Check for the edge condition change: if so and False->True, override and activate controller2; if True->False, override and activate controller1
+    # Check for the edge condition change: if so and False->True, override and activate follower; if True->False, override and activate header
     if condition != prev_condition and prev_condition == False:
         # Compute the desired value for the override of the integrator in case of edge condition change
-        desired_value_controller2 = (float(controller1.log_df.iloc[-1]['control_signal'])-controller2.kp*error2)/controller2.ki if not controller1.log_df.empty else 0
+        desired_value_follower = (float(header.log_df.iloc[-1]['control_signal'])-follower.kp*error2)/follower.ki if not header.log_df.empty else 0
         # Override the state of the inactive->active controller to be consistent with the current control action
-        controller2.reset_state(desired_value_controller2)
+        follower.reset_state(desired_value_follower)
     if condition != prev_condition and prev_condition == True:
         # Compute the desired value for the override of the integrator in case of edge condition change
-        desired_value_controller1 = (float(controller2.log_df.iloc[-1]['control_signal'])-controller1.kp*error1)/controller1.ki if not controller2.log_df.empty else 0
+        desired_value_header = (float(follower.log_df.iloc[-1]['control_signal'])-header.kp*error1)/header.ki if not follower.log_df.empty else 0
         # Override the state of the inactive->active controller to be consistent with the current control action
-        controller1.reset_state(desired_value_controller1)
+        header.reset_state(desired_value_header)
     reinit_error = 'No'
 except Exception as e:
     print(e)
@@ -298,12 +298,12 @@ except Exception as e:
 # In[11]: COMPUTATION OF THE CONTROL ACTION (FOR BOTH CONTROLLERS) AND SELECTION OF THE FINAL CONTROL ACTION
 # Calculate the control signal for both controllers
 try:
-    control_output1 = controller1.compute(error1, dt, not condition) # In m^3/s
-    control_output2 = controller2.compute(error2, dt, condition) # In m^3/s
+    control_output1 = header.compute(error1, dt, not condition) # In m^3/s
+    control_output2 = follower.compute(error2, dt, condition) # In m^3/s
 
     # Save the state of controllers for the next run
-    controller1.save_state(log_date, filename=os.path.join(os.getcwd(), 'Output', f"{output_filename_header}_{log_date}.csv"))
-    controller2.save_state(log_date, filename=os.path.join(os.getcwd(), 'Output', f"{output_filename_header}_{log_date}.csv"))
+    header.save_state(log_date, filename=os.path.join(os.getcwd(), 'Output', f"{output_filename_header}_{log_date}.csv"))
+    follower.save_state(log_date, filename=os.path.join(os.getcwd(), 'Output', f"{output_filename_header}_{log_date}.csv"))
 
     # Switch: choose between the two control signals based on the condition
     final_control_signal = control_output2 if condition else control_output1 # If condition, the 'co2/ch4 ratio' controller is active and its control signal is selected
@@ -344,7 +344,7 @@ except Exception as e:
 
 # Summary log to CSV file for main outputs of this run
 output_filepath = os.path.join(os.getcwd(), 'Output', f'Output_selector_{log_date}.csv')
-active_controller_name = controller2.name if condition else controller1.name
+active_controller_name = follower.name if condition else header.name
 new_row_output = {'active':active_controller_name, 'ch4_error': error1, 'co2/ch4_error': error2, 
                   'c2/ch4-Trlow': measure2 - threshold_low, 'co2/ch4_TrHigh':measure2 - threshold_high, 
                   'final_control_signal':final_control_signal, 'on_minutes_tot':on_minutes_tot,
@@ -353,7 +353,7 @@ new_row_output = {'active':active_controller_name, 'ch4_error': error1, 'co2/ch4
 append_row_to_csv(output_filepath, new_row_output)
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# In[13]: FIND THE LAST AVAILABLE CONFIGURATION ".INI" FILE AND UPDATE IT
+# In[13]: FIND THE LAST AVAILABLE CONFIGURATION INI FILE AND UPDATE IT
 input_directory = os.path.join(os.getcwd(), 'Bioreactor') # Find it in...
 output_directory =  os.path.join(os.getcwd(), 'Bioreactor') # Update it and save to...
 copy_directory = os.path.join(os.getcwd(), 'Output') # And a copy to... 
