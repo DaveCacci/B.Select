@@ -164,3 +164,5 @@ cython_debug/
 
 #Subfolders
 Private/
+RPi_implementation/Private/
+UIT_implementation/Private/
