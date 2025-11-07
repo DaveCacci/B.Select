@@ -92,9 +92,9 @@ def main(modelname, now: datetime = datetime.now()):
     combined_dataframe = y_df_data_on[(y_df_data_on['Timestamp'] >= start_timestamp) & (y_df_data_on['Timestamp'] <= end_timestamp)] # Just to preserve old name of UIT selector
 
     # Calculate mean and standard deviation of dataset (not strictly necessary)
-    mean_R2 = combined_dataframe['gas_rate_out_ma'].mean()
-    stdev_R2 = combined_dataframe['gas_rate_out_ma'].std()
-    logger.info(f"""dataset_gas_rate_mean = {mean_R2}, dataset_gas_rate_mean = {stdev_R2}""")
+    mean = combined_dataframe['gas_rate_out_ma'].mean()
+    stdev = combined_dataframe['gas_rate_out_ma'].std()
+    logger.info(f"""dataset_gas_rate_mean = {mean}, dataset_gas_rate_mean = {stdev}""")
 
     # Calculate methane flowrate ('ch4_rate'), carbom dioxide flowrate ('co2_rate') and gas ratio ('ratio') as ch4/co2
     rate = f'gas_rate_out_ma' # Gas rate. Must be in (L/h). If not, convert above with 'udm_gas_conversion' (but then re-design the controller parameters accordingly)

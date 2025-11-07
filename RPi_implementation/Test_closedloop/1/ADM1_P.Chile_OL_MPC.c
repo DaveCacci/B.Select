@@ -14766,7 +14766,7 @@ void ADM1_P_Chile_OL_MPC_setupDataStruc(DATA *data, threadData_t *threadData)
   data->modelData->modelFilePrefix = "ADM1_P.Chile_OL_MPC";
   data->modelData->resultFileName = NULL;
   data->modelData->modelDir = "C:/Users/lenovo/OneDrive - Politecnico di Milano/Work_cloud/DOTTORATO/Sperimentazione MPC/NMPC/Real_old/Real_offline";
-  data->modelData->modelGUID = "{2429fde5-ad26-4f75-bb57-db0f0e0a1b5d}";
+  data->modelData->modelGUID = "{01ae6d3e-f4fd-4eb0-8498-7a471f7054f1}";
   #if defined(OPENMODELICA_XML_FROM_FILE_AT_RUNTIME)
   data->modelData->initXMLData = NULL;
   data->modelData->modelDataXml.infoXMLData = NULL;

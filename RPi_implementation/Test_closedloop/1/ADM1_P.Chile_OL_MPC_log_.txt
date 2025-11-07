@@ -280,36 +280,36 @@ stdout            | info    | ... loading \"Flowrates\" from \"C:\\Users\\lenovo
 LOG_SUCCESS       | info    | The initialization finished successfully without homotopy method.
 LOG_STATS         | info    | ### STATISTICS ###
 |                 | |       | | timer
-|                 | |       | | |    0.0807188s          reading init.xml
-|                 | |       | | |    0.0133383s          reading info.xml
-|                 | |       | | |    0.0038517s [  1.0%] pre-initialization
-|                 | |       | | |    0.0040742s [  1.1%] initialization
-|                 | |       | | |    0.0083503s [  2.2%] steps
-|                 | |       | | |    0.0393727s [ 10.3%] solver (excl. callbacks)
-|                 | |       | | |     0.008884s [  2.3%] creating output-file
-|                 | |       | | |    0.0055686s [  1.5%] event-handling
-|                 | |       | | |    0.0006989s [  0.2%] overhead
-|                 | |       | | |     0.310193s [ 81.4%] simulation
-|                 | |       | | |     0.380993s [100.0%] total
+|                 | |       | | |    0.0573312s          reading init.xml
+|                 | |       | | |    0.0087989s          reading info.xml
+|                 | |       | | |    0.0021764s [  0.8%] pre-initialization
+|                 | |       | | |    0.0318431s [ 11.4%] initialization
+|                 | |       | | |    0.0051611s [  1.8%] steps
+|                 | |       | | |     0.025736s [  9.2%] solver (excl. callbacks)
+|                 | |       | | |    0.0048752s [  1.7%] creating output-file
+|                 | |       | | |    0.0036226s [  1.3%] event-handling
+|                 | |       | | |    0.0002853s [  0.1%] overhead
+|                 | |       | | |     0.206747s [ 73.7%] simulation
+|                 | |       | | |     0.280447s [100.0%] total
 |                 | |       | | events
-|                 | |       | | |    36 state events
+|                 | |       | | |    38 state events
 |                 | |       | | |     1 time events
 |                 | |       | | solver: dassl
-|                 | |       | | |   751 steps taken
-|                 | |       | | |   870 calls of functionODE
-|                 | |       | | |   350 evaluations of jacobian
-|                 | |       | | |     3 error test failures
+|                 | |       | | |   776 steps taken
+|                 | |       | | |   907 calls of functionODE
+|                 | |       | | |   365 evaluations of jacobian
+|                 | |       | | |     5 error test failures
 |                 | |       | | |     0 convergence test failures
-|                 | |       | | | 0.29338s time of jacobian evaluation
+|                 | |       | | | 0.193579s time of jacobian evaluation
 LOG_SUCCESS       | info    | The simulation finished successfully.
 ",
-    timeFrontend = 0.3736173,
-    timeBackend = 2.8275936,
-    timeSimCode = 0.6005781,
-    timeTemplates = 0.2312989,
-    timeCompile = 10.2135335,
-    timeSimulation = 0.9046625,
-    timeTotal = 15.1538331
+    timeFrontend = 0.3274761,
+    timeBackend = 2.5017468,
+    timeSimCode = 0.40207,
+    timeTemplates = 0.3331516,
+    timeCompile = 10.5526082,
+    timeSimulation = 0.6692751,
+    timeTotal = 14.7869851
 end SimulationResult;
 "Warning: Assuming fixed start value for the following 2 variables:
          pump_onoff.tfr_pump:DISCRETE(fixed = true )  type: Real
