@@ -1,0 +1,11 @@
+{
+    "model": {
+        "mesh_finesse": 12,
+        "start_timestamp": "2025-05-07 13:00:00",
+        "end_timestamp": "2025-05-07 16:00:00",
+        "update_window_lenght": 10
+    },
+    "controller": {
+        "control_interval": 3
+    }
+}

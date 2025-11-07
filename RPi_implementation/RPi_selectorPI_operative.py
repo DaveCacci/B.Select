@@ -43,7 +43,7 @@ def main(modelname, now: datetime = datetime.now()):
 
     # modelname = '1' #or '2' # If the desire is to run the present code stand alone, delete main function and unindent the code below. Then uncomment this line,
     directory = os.getcwd() # Modify if this code from another directory with respect to where the input and output files are stored and willing to be saved
-    testname = ''  # If there is a specific test subfolder name of the <directory>, specify it here (e.g., '/Selector_test')
+    testname = ''  # If there is a specific test subfolder name of the <directory>, specify it here (e.g., '/Test_closedloop')
     # ------------------------------------------------------------------------------------------------------------------- #
     # DECLARE AND CONFIGURE LOGGER
     log_directory = os.path.join(directory, testname, "logs") # A subfolder 'logs' is created inside the test folder
@@ -246,7 +246,7 @@ def main(modelname, now: datetime = datetime.now()):
     
     # Save the control action also in daily load (only for simulation tests e.g. EKF for the R2 reactor in Chile experimental campaign)
     # u_star_df = pd.DataFrame({'Timestamp': [now], 'Uk': [np.round(u_current, 1)]})
-    # save_df_with_check(u_star_df, os.path.join(directory, testname, "Input", f'NMPC_R{modelname}_u_actual_ANCILLARY_real.csv'), log=True)
+    # save_df_with_check(u_star_df, os.path.join(directory, testname, "Input", f'{modelname}_u_actual.csv'), log=True)
 
     # ------------------------------------------------------------------------------------------------------------------- #
     # In[10]: PLOT THE RESULTS (on the past days from start_timestamp to now)
