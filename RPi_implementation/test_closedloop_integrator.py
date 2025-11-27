@@ -81,7 +81,7 @@ def main():
                                 os.path.join(directory, testname, 'Input\\'), # Input path (where the most of the filenames below are located)
                                 ['parameters_update.json', 'integrator.json'], # parameters_update.json is actually not needed, the file can be empty. integrator.json is important
                                 [f'Manual_flowrates_real_R1.csv', f'{modelname}_u_actual.csv', # Needed to set current loads in the Modelica integrator
-                                'MaizeSilage_real_LaRotunda.csv','CattleSlurry_real_last.csv', 'TomatoSauce_real_new.csv', # Read just to make prepare_model_inputs work
+                                'MaizeSilage_comp_raw.csv','CowSlurry_comp_raw.csv', 'TomatoSauce_comp_raw.csv', # Read just to make prepare_model_inputs work
                                 f'{modelica_states_storage_filename}.csv']) # Needed to set initial states in the Modelica integrator
     integrator_parameters = theta['integrator_parameters']
     integrator_parameters['model']['start_timestamp'] = datetime.strptime(integrator_parameters['model']['start_timestamp'], "%Y-%m-%d %H:%M:%S")

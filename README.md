@@ -44,11 +44,13 @@ The tool has undergone two major experimental validation campaigns:
 
 ### Inside the `/RPi_implementation` folder:
 
-- **Python code** to run the BIOGoAlS.Select tool — *improved and adapted* for the hand-made, Raspberry-Pi-driven control architecture used in Chile’s experiments. Ready to run when called from the terminal or a Jupyter Notebook.
+- **Python code** to run the **BIOGoAlS.Select** tool — *improved and adapted* for the hand-made, Raspberry-Pi-driven control architecture used in Chile’s experiments. Ready to run when called from the terminal or a Jupyter Notebook.
+
+- **Jupyter Notebook** for running a closed-loop test (together with a **Python code** to call the simulator of a real plant from the **BIOGoAlS.agri-AcoDM** tool) $\leftrightarrow$ sub-folder with an example of inputs and outputs required and generated.
 
 - **`/Input` subfolder:** contains required CSV input data for the Python code.
 
-- **Examples** of plots and output CSV files.
+- **Examples** of plots, logs and output files.
 
 ---
 
@@ -58,6 +60,7 @@ The tool has undergone two major experimental validation campaigns:
 - Avoid editing files inside `/UIT_implementation` unless you have access to the UIT system.  
 - Python 3.10+ is required for the RPi implementation.
 - Python 3.8- is required for the UIT implementation.
+- A **Jupyter Notebook** to find the best design of the controller (optimization) is also present.
 
 ---
 
