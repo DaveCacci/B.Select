@@ -20,7 +20,7 @@ The tool has undergone two major experimental validation campaigns:
 - [**UIT Software User Manual**](./UIT_implementation/UIT_software_user_manual.pdf)  
   Additional information on integration between this program and the UIT proprietary software.
 
-- [**SelectorPI Pseudo-Code**](./SelectorPI_pseudo_code)  
+- [**SelectorPI Pseudo-Code**](./SelectorPI_pseudo_code.pdf)  
   Step-by-step guidance through the code, both from mathematical and conceptual (simplified) standpoints.
 
 - [**BIOGOALS.SELECT User Manual**](./BIOGOALS.SELECT_USER_MANUAL.pdf)  
@@ -64,4 +64,4 @@ The tool has undergone two major experimental validation campaigns:
 
 ---
 
-© 2025 Davide Carecci — All rights reserved.
+© 2025 Davide Carecci — All rights reserved.**
