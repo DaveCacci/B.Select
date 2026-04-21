@@ -32,7 +32,7 @@ from SelectorPI_controller import PIController_uit, HysteresisComparator_uit
 num_recent_files = 2
 reactor_number = 2 # Specify reactor number (1 or 2)
 reactor = f'R{reactor_number}'
-directory_path = f'C:\\Users\\lenovo\\OneDrive - Politecnico di Milano\\Work_cloud\\DOTTORATO\\Sperimentazione UIT\\Software\\{reactor}'
+directory_path = f'C:\\Users\\lenovo\\OneDrive - Politecnico di Milano\\Work_cloud\\DOTTORATO\\Sperimentazione UIT\\Software\\{reactor}' # (f'C:/Bioreactor/Logs/{reactor}' on UIT machine)
 recent_csv_files, success_find_data, warning_find_data = find_csv_file_paths(directory_path, num_recent_files)
 # Define current date for logging
 log_date = datetime.now().strftime('%Y-%m-%d')
@@ -354,9 +354,9 @@ append_row_to_csv(output_filepath, new_row_output)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # In[13]: FIND THE LAST AVAILABLE CONFIGURATION INI FILE AND UPDATE IT
-input_directory = os.path.join(os.getcwd(), 'Bioreactor') # Find it in...
-output_directory =  os.path.join(os.getcwd(), 'Bioreactor') # Update it and save to...
-copy_directory = os.path.join(os.getcwd(), 'Output') # And a copy to... 
+input_directory = os.path.join(os.getcwd(), 'Bioreactor') # Find it in... ('C:/Bioreactor/Remote/Parameter correct' on UIT machine)
+output_directory =  os.path.join(os.getcwd(), 'Bioreactor') # Update it and save to... ('C:/Bioreactor/Remote' on UIT machine)
+copy_directory = os.path.join(os.getcwd(), 'Output') # And a copy to... ('C:/Users/Admin/UIT controller' on UIT machine)
 # Update the .ini file with the new 'on' and 'off' seconds for the peristaltic pumps
 try:
     input_config_file_path, success_find_ini, warning_find_ini = load_closest_ini_file(input_directory)
