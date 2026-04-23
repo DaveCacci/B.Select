@@ -41,9 +41,10 @@ def main(modelname, now: datetime = datetime.now()):
             now (datetime): The current datetime for the control evaluation.
     OUTPUTS: Saves the control action and logs to specified files.'''
 
-    # modelname = '1' #or '2' # If the desire is to run the present code stand alone, delete main function and unindent the code below. Then uncomment this line,
+    # DECLARE SIMULATION META-OPTIONS
+    # modelname = '1' #or '2' # If the desire is to run the present code stand alone, delete main function and unindent the code below. Then uncomment this line.
     directory = os.getcwd() # Modify if this code from another directory with respect to where the input and output files are stored and willing to be saved
-    testname = ''  # If there is a specific test subfolder name of the <directory>, specify it here (e.g., '/Test_closedloop')
+    testname = 'Test_closedloop'  # If there is a specific test subfolder name of the <directory>, specify it here (e.g., '/Test_closedloop')
     # ------------------------------------------------------------------------------------------------------------------- #
     # DECLARE AND CONFIGURE LOGGER
     log_directory = os.path.join(directory, testname, "logs") # A subfolder 'logs' is created inside the test folder

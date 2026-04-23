@@ -3,7 +3,8 @@ Test test_closedloop_integrator.py and RPi_selectorPI_operative.py in 'test_clos
 Here modify manually: 
     1. the path to the files to be loaded and for saving the results
     2. 'modelname', 'testname', 'save_out', 'final_challange' and 'path_to_agriacodm' variables
-    3. the level of noise added to the integrator outputs before saving them as measurements
+    3. the inorganic carbon concentration inside the feedstocks ('sic') (set this equal to the values computed by the Modelica model).
+    4. the level of noise added to the integrator outputs before saving them as measurements
 '''
 # In[1]: IMPORT STANDARD LIBRARIES
 import numpy as np
@@ -40,9 +41,9 @@ def main():
     save_out = False # If True, saves some additional load and feedstock characterization data in some files in 'directory/testname' for checking purposes
     final_challange = True # If True, reads the trapezoid reduction from 'fake_theta_reduction.csv' and applies it to the integrator inputs (see IEEE CDC 2025 paper).
     modelname = '1' # Must be the same as in the test_closedloop.ipynb for the main function call of RPi_selectorPI_operative.py
-    testname = 'Test_closedloop' # Subfolder name of the test
-    directory = os.getcwd()
-    path_to_agriacodm = 'C:/Users/lenovo/OneDrive - Politecnico di Milano/Work_cloud/DOTTORATO/Sperimentazione MPC/NMPC/Real_old/Real_offline/' # Path to the B.Agri_AcoDM library
+    directory = os.getcwd() # Modify if this code from another directory with respect to where the input and output files are stored and willing to be saved
+    testname = 'Test_closedloop' # If there is a specific test subfolder name of the <directory>, specify it here (e.g., '/Test_closedloop')
+    path_to_agriacodm = 'C:/Users/lenovo/OneDrive - Politecnico di Milano/Work_cloud/DOTTORATO/Modelling/Pilot_plant/' # Path to the B.Agri_AcoDM library
     
     #------------------------------------------------------------------------------------------------------------#
     # DECLARE LOGGER
@@ -115,9 +116,9 @@ def main():
     tomatosauce = filter_and_convert_to_time(file_path='/tomatosauce', df = tomatosauce,
                                 start_timestamp=integrator_inputs[1][0], end_timestamp=integrator_inputs[1][-1],
                                 fill_option="first_row", log = True)
-    save_combi(os.path.join(path_to_agriacodm, 'CombiTimeTables', 'disturbance_cowslurry.txt'), cowslurry[1], ["%.7f"] * cowslurry[1].shape[1])
-    save_combi(os.path.join(path_to_agriacodm, 'CombiTimeTables', 'disturbance_maize.txt'), maize[1], ["%.7f"] * maize[1].shape[1])
-    save_combi(os.path.join(path_to_agriacodm, 'CombiTimeTables', 'disturbance_tomatosauce.txt'), tomatosauce[1], ["%.7f"] * tomatosauce[1].shape[1])
+    save_combi(os.path.join(path_to_agriacodm, 'CombiTimeTables', 'Chile', 'disturbance_cowslurry.txt'), cowslurry[1], ["%.7f"] * cowslurry[1].shape[1])
+    save_combi(os.path.join(path_to_agriacodm, 'CombiTimeTables', 'Chile', 'disturbance_maize.txt'), maize[1], ["%.7f"] * maize[1].shape[1])
+    save_combi(os.path.join(path_to_agriacodm, 'CombiTimeTables', 'Chile', 'disturbance_tomatosauce.txt'), tomatosauce[1], ["%.7f"] * tomatosauce[1].shape[1])
 
     #------------------------------------------------------------------------------------------------------------#
     # If in open-loop, must modify the reading of 'controlaction' in the Modelica model! Disable it and read directly tomato from combi. 
@@ -138,7 +139,7 @@ def main():
     
     #------------------------------------------------------------------------------------------------------------#
     # CALL MODELICA MODEL (ADM1 INTEGRATOR)
-    y_df, x0_adm1_dict = modelica_integrator(os.path.join(path_to_agriacodm, "agriAcoDM_03.03.2025_DC.mo"),
+    y_df, x0_adm1_dict = modelica_integrator(os.path.join(path_to_agriacodm, "agriAcoDM.mo"),
                                                         "ADM1_P.Chile_OL_MPC", 
                                                         modelname, 
                                                         u_dict, 
@@ -205,6 +206,6 @@ def main():
 if __name__ == "__main__":
     # Allow the script to be executed from the terminal
     if len(sys.argv) != 1:
-        print("Usage: python test_closedloop_tube_integrator.py <>")
+        print("Usage: python test_closedloop_integrator.py <>")
         sys.exit(1)
     main()
