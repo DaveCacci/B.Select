@@ -61,6 +61,7 @@ The tool has undergone two major experimental validation campaigns:
 - Python 3.10+ is required for the RPi implementation.
 - Python 3.8- is required for the UIT implementation.
 - A **Jupyter Notebook** to find the best design of the controller (optimization) is also present.
+- For further details, please refer also to the PhD thesis of the author (visit [POLItesi](https://www.politesi.polimi.it/) or request a copy to <davide.carecci@polimi.it>).
 
 ---
 
