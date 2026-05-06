@@ -32,7 +32,7 @@ from SelectorPI_controller import PIController_uit, HysteresisComparator_uit
 num_recent_files = 2
 reactor_number = 2 # Specify reactor number (1 or 2)
 reactor = f'R{reactor_number}'
-directory_path = f'C:\\Users\\lenovo\\OneDrive - Politecnico di Milano\\Work_cloud\\DOTTORATO\\Sperimentazione UIT\\Software\\{reactor}' # (f'C:/Bioreactor/Logs/{reactor}' on UIT machine)
+directory_path = f'C:\\Users\\lenovo\\OneDrive - Politecnico di Milano\\Work_cloud\\DOTTORATO\\Sperimentazione UIT\\SelectorPI controller\\Data\\{reactor}' # (f'C:/Bioreactor/Logs/{reactor}' on UIT machine)
 recent_csv_files, success_find_data, warning_find_data = find_csv_file_paths(directory_path, num_recent_files)
 # Define current date for logging
 log_date = datetime.now().strftime('%Y-%m-%d')

@@ -1,5 +1,6 @@
 **Author:** Davide Carecci  
 **Initial commit:** 02.09.2025  
+⚠️ This repo uses Git LFS - do not download as ZIP (see Notes section of this README).
 ⚠️ The **general_utils** library contains also a user manual to setup VSCode/Python for non-expert users and the list of the required standard Python libraries (download it from the [GitHub](https://github.com/DaveCacci/general_utils.git) repository).
 
 ---
@@ -63,6 +64,15 @@ The tool has undergone two major experimental validation campaigns:
 - Python 3.8- is required for the UIT implementation.
 - A **Jupyter Notebook** to find the best design of the controller (optimization) is also present.
 - For further details, please refer also to the PhD thesis of the author (visit [POLItesi](https://www.politesi.polimi.it/) or request a copy to <davide.carecci@polimi.it>).
+
+- ⚠️ Important: Git LFS Required
+  This repository uses Git LFS (Large File Storage).
+  ❌ Do NOT download the project using "Download ZIP" — files will be incomplete.
+  ✅ Instead, clone the repository:
+
+  `git clone <repo-url>`
+  `cd <repo>`
+  `git lfs pull`
 
 ---
 
